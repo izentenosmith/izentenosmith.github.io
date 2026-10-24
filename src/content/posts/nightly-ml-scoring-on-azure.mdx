@@ -1,0 +1,177 @@
+---
+title: Designing a nightly ML scoring pipeline on Azure
+description: A lakehouse, an MLOps loop and a fully private network for scoring and explaining around ten million financial transactions every night, plus the sizing details that are easy to get wrong.
+date: 2026-10-24
+tags: [azure, databricks, mlops, mlflow, networking]
+---
+
+import { MlopsLoopDiagram, NightlyPipelineDiagram } from './diagrams/scoring-diagrams'
+
+The brief: every night, take the day's transactions from a financial institution's core systems (on the order of ten million rows), score each one with a machine-learning model, attach a human-readable reason to every score, and have the results ready for analysts in the morning. The data is sensitive enough that **nothing may touch the public internet**, and decisions have to be auditable: if someone asks why a transaction was flagged, you must be able to say which model version flagged it and why.
+
+This post walks through the architecture I designed for that on Azure: how the data flows, how models get from a notebook to the nightly run without anyone copying files around, and how the network keeps everything private. It ends with the sizing details that are easy to get wrong, because most of them only show up when a deployment fails.
+
+## Batch, not streaming
+
+The first decision is the one everything else follows from. Nothing here needs an answer within seconds: analysts review results the next morning. So the system is a **nightly batch**: it wakes up late in the evening, runs ingest → transform → score → publish, and shuts down. Compute exists only while the job runs, which keeps costs proportional to the work, and every night is one consistent snapshot instead of a continuous trickle you have to reason about.
+
+## The nightly pipeline
+
+<NightlyPipelineDiagram />
+
+1. **Ingest.** Data Factory copies the day's tables and files from the core systems over a site-to-site VPN and lands them, untouched, in the data lake.
+2. **Refine.** A Databricks job turns raw data into clean data, then clean data into model features (the three medallion layers below).
+3. **Score.** The same job loads whichever model version currently holds the `@champion` alias in the registry, scores every row and computes a per-row explanation.
+4. **Publish.** Scores and reasons go to PostgreSQL, which serves dashboards: a small web app on Container Apps, or Power BI pointed straight at the database.
+
+The split between the lake and PostgreSQL is deliberate. The lake is great at scanning ten million rows and terrible at answering "show me this one transaction" in 20 ms; PostgreSQL is the opposite. Analytical work stays in the lakehouse, and the app only ever reads a compact, indexed results table.
+
+## Medallion layers in Delta Lake
+
+The lake (ADLS Gen2 with the hierarchical namespace enabled, which gives Delta real directories and atomic renames) is organized in three layers:
+
+- **Bronze** keeps data exactly as it arrived. Never edited, so any night can be reprocessed from scratch when a bug is found downstream.
+- **Silver** is cleaned, typed and deduplicated: one row per transaction, whatever the source sent.
+- **Gold** holds features: per-transaction and aggregated values (amounts relative to the account's history, counts over time windows, and so on) shaped exactly as the model expects them.
+
+The property that matters most at this layer is **idempotency**. Jobs fail and get rerun; a rerun must not double-count. Writing silver with a `MERGE` keyed on the transaction id makes that automatic:
+
+```python
+from delta.tables import DeltaTable
+from pyspark.sql import Window, functions as F
+
+latest_first = Window.partitionBy("transaction_id").orderBy(F.col("ingested_at").desc())
+
+clean = (
+    spark.read.table("bronze.transactions")
+    .where(F.col("ingest_date") == run_date)
+    .withColumn("amount", F.col("amount").cast("decimal(18,2)"))
+    .withColumn("rn", F.row_number().over(latest_first))
+    .where("rn = 1")
+    .drop("rn")
+)
+
+(
+    DeltaTable.forName(spark, "silver.transactions").alias("t")
+    .merge(clean.alias("s"), "t.transaction_id = s.transaction_id")
+    .whenMatchedUpdateAll()
+    .whenNotMatchedInsertAll()
+    .execute()
+)
+```
+
+Delta's ACID transactions mean a job that dies halfway leaves the table exactly as it was, and its time travel means "what did gold look like on the night we trained model v12?" has a precise answer.
+
+## The model: gradient boosting plus SHAP
+
+The data is tabular and heavily imbalanced: the transactions worth flagging are a tiny fraction of the total. That points to **XGBoost**:
+
+- Gradient-boosted trees are consistently strong on tabular data without much feature scaling or tuning.
+- `scale_pos_weight` (or sample weights) handles the imbalance directly.
+- It trains comfortably on a single large node, and scores fast.
+
+Two choices matter as much as the algorithm. **Split by time, not at random**: train on earlier weeks and validate on later ones, or the model learns from the future and validation looks better than reality. And **don't judge it by accuracy**: when 99.9% of rows are negative, "never flag anything" is 99.9% accurate. Precision-recall AUC and recall at a fixed review budget ("of the top N flags per night, how many were real?") are the numbers that matter.
+
+For auditability, every score comes with a reason. **SHAP** values break a prediction down into each feature's contribution, and for tree models `TreeExplainer` computes them exactly and quickly. Storing the top three contributors per row turns "the model said 0.93" into "0.93, mostly because of the amount, the merchant category and the time of day".
+
+Scoring ten million rows with explanations doesn't fit on a driver node, so it runs distributed with `mapInPandas`, loading the model once per partition:
+
+```python
+import mlflow
+import numpy as np
+import pandas as pd
+import shap
+
+MODEL_URI = "models:/transaction-scorer@champion"
+
+def score(batches):
+    model = mlflow.xgboost.load_model(MODEL_URI)
+    explainer = shap.TreeExplainer(model)
+    for pdf in batches:
+        X = pdf[FEATURES]
+        contributions = explainer.shap_values(X)
+        top = np.argsort(-np.abs(contributions), axis=1)[:, :3]
+        yield pd.DataFrame({
+            "transaction_id": pdf["transaction_id"],
+            "score": model.predict_proba(X)[:, 1],
+            "reasons": [[FEATURES[i] for i in row] for row in top],
+        })
+
+scored = spark.read.table("gold.transaction_features").mapInPandas(
+    score, schema="transaction_id string, score double, reasons array<string>"
+)
+```
+
+Results are written to a staging table in PostgreSQL and swapped in with a single transaction at the end, so dashboards never show half of tonight next to half of last night.
+
+## The MLOps loop
+
+A model trained once degrades as behavior changes, and the patterns this model looks for change on purpose. Retraining has to be routine, and putting a new model into production can't involve anyone copying a file.
+
+<MlopsLoopDiagram />
+
+- **CI**: every push to `main` runs lint, unit tests and a build in Azure Pipelines, and pushes the training image to the container registry. Model code is software and gets the same gate.
+- **Continuous training**: Databricks prepares a versioned snapshot of gold, and the ML workspace trains a *challenger* with the validated image. MLflow tracking records parameters, metrics and artifacts for every run, so nobody has to rerun an experiment to find out how it went.
+- **Evaluate**: the challenger and the current champion are scored **on the same fresh holdout**. Comparing the challenger's new metrics with the champion's metrics from months ago measures the data drift, not the model.
+- **Promote**: if the challenger wins by a margin you've agreed on in advance, the `@champion` alias moves to it. The nightly job loads `models:/transaction-scorer@champion`, so promotion needs no deploy at all.
+
+```python
+from mlflow import MlflowClient
+
+client = MlflowClient()
+champion = client.get_model_version_by_alias(MODEL_NAME, "champion")
+
+champion_auc = evaluate(champion, holdout)
+challenger_auc = evaluate(challenger, holdout)
+
+if challenger_auc >= champion_auc + MIN_GAIN:
+    client.set_registered_model_alias(MODEL_NAME, "champion", challenger.version)
+```
+
+<Callout kind="tip" title="Aliases over stages">
+  Older MLflow versions used fixed stages ("Staging", "Production"); current versions use named aliases instead. An alias is just a movable pointer to a version, so a rollback is the same one-line call pointed at the previous version, and every score can store the exact version that produced it.
+</Callout>
+
+That last point is what auditability comes down to: each results row records the model version, and the registry links that version to its training run, its data snapshot and its code commit.
+
+## A network with no public endpoints
+
+Every service lives in one virtual network split into subnets by function, and every platform service (storage, Key Vault, Data Factory, Databricks, the ML workspace, the container registry) is reached only through a **private endpoint**: a network interface with a private IP inside the VNet. Public network access is disabled on all of them.
+
+- **Getting to the core systems:** a VPN gateway runs an encrypted site-to-site tunnel to the on-premises network.
+- **DNS is the part that actually makes private endpoints work.** Each service needs its `privatelink.*` private DNS zone linked to the VNet (for storage, `privatelink.dfs.core.windows.net` and `privatelink.blob.core.windows.net`), or clients resolve the public name and fail to connect. If on-premises systems need to resolve these names too, they need a conditional forwarder to an Azure DNS Private Resolver.
+- **Identity instead of secrets:** services authenticate to each other with managed identities and least-privilege RBAC roles in Entra ID. The pipeline connects to the registry through workload identity federation, so no password lives in a pipeline variable. Key Vault holds what's left.
+- **Detection:** Defender for Cloud watches the containers, databases and storage accounts for misconfigurations and suspicious access.
+
+### Sizing the subnets
+
+Private networks fail at deploy time, and usually on subnet size. Azure reserves five addresses in every subnet, and several services have minimums of their own:
+
+| Subnet | Size | Why |
+| --- | --- | --- |
+| `GatewaySubnet` | /27 | Must be named exactly this. /29 is the floor; /27 leaves room for gateway upgrades. |
+| Private endpoints | /27 | One IP per endpoint, and storage alone needs separate `dfs` and `blob` endpoints. |
+| Databricks host + container | 2 × /26 | VNet injection needs two delegated subnets, and their size caps how many nodes a cluster can have. /26 each is the usual recommendation. |
+| ML compute | /27 | Training clusters get their IPs here; size it for the largest cluster. |
+| Container Apps | /27 | Minimum for a workload-profiles environment (consumption-only needs /23). |
+| PostgreSQL | /28 | Delegated to the flexible server, nothing else allowed in it. |
+
+The whole layout fits comfortably in a `/16` with room to grow, but it's worth doing the arithmetic before the first deployment rather than after the third failed one.
+
+<Callout kind="warning" title="Ingesting from on-premises needs a runtime inside the network">
+  Data Factory itself is a managed service. To pull data through the VPN, the copy has to run on a **self-hosted integration runtime** on a VM inside the VNet (or on a managed-VNet runtime with a private link service in front of the source). Plan for that VM: it's part of the critical path.
+</Callout>
+
+## What this design buys
+
+- **Reprocessing is cheap and exact.** Bronze is never edited, and Delta time travel pins every training run to the data it saw.
+- **Model releases are boring.** Training, evaluation and promotion are automated, and promotion and rollback are both a pointer move.
+- **Every flag is explainable.** Score, top reasons and model version are stored together.
+- **Nothing is reachable from outside.** The only way in is the VPN, and services only trust each other's identities.
+- **Costs follow the work.** Compute runs for the nightly job and the retraining runs, and is off the rest of the time.
+
+## What I'd watch closely
+
+- **Drift monitoring** deserves its own job: compare tonight's feature distributions and score distribution with the training data, and alert before precision drops, not after analysts notice.
+- **The review loop.** Analysts' decisions on flagged transactions are the best labels you'll ever get. Feeding them back into gold is what keeps the model improving rather than just retraining on the same assumptions.
+- **The promotion margin.** Too small and the champion flips back and forth on noise; too large and real improvements never ship. Agree on it with the people who use the results, and write it down.

@@ -5,6 +5,7 @@ import { ContactPage } from '@/pages/contact'
 import { ExperiencePage } from '@/pages/experience'
 import { HomePage } from '@/pages/home'
 import { NotFoundPage } from '@/pages/not-found'
+import { PostPage } from '@/pages/post'
 
 export const router = createBrowserRouter([
   {
@@ -13,6 +14,7 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: 'experience', element: <ExperiencePage /> },
       { path: 'blog', element: <BlogPage /> },
+      { path: 'blog/:slug', element: <PostPage /> },
       { path: 'contact', element: <ContactPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
