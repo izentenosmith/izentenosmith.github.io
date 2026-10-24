@@ -1,11 +1,13 @@
 import { ArrowRight, MapPin } from 'lucide-react'
 import { motion, type Variants } from 'motion/react'
 import { Link } from 'react-router'
+import { PostCard } from '@/components/blog/post-card'
 import { Reveal } from '@/components/motion/reveal'
 import { SectionHeading } from '@/components/section-heading'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { posts } from '@/content/posts'
 import { profile } from '@/content/profile'
 
 const hero: Variants = {
@@ -114,25 +116,24 @@ export function HomePage() {
       </section>
 
       <section className="space-y-6">
-        <Reveal>
+        <Reveal className="flex items-end justify-between gap-4">
           <SectionHeading eyebrow="Writing">From the blog</SectionHeading>
+          <Button variant="ghost" asChild>
+            <Link to="/blog">
+              All posts
+              <ArrowRight data-icon="inline-end" />
+            </Link>
+          </Button>
         </Reveal>
-        <Reveal>
-          <Card>
-            <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-pretty text-muted-foreground">
-                Deep dives on systems I've designed and run: data modeling, zero-downtime deploys
-                and network monitoring. First posts are on the way.
-              </p>
-              <Button variant="outline" asChild>
-                <Link to="/blog">
-                  Go to the blog
-                  <ArrowRight data-icon="inline-end" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </Reveal>
+        <ul className="grid gap-4">
+          {posts.slice(0, 3).map((post, index) => (
+            <li key={post.slug}>
+              <Reveal delay={index * 0.06} className="h-full">
+                <PostCard post={post} />
+              </Reveal>
+            </li>
+          ))}
+        </ul>
       </section>
     </div>
   )

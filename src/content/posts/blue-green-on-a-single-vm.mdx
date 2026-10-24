@@ -1,0 +1,191 @@
+---
+title: Blue/green deploys on a single VM with Docker Compose and Nginx
+description: Zero-downtime releases and one-command rollbacks without Kubernetes, using two full Compose stacks, a symlinked Nginx upstream and a switch script that refuses to break the proxy.
+date: 2026-10-24
+tags: [deployment, nginx, docker, linux]
+---
+
+import { BlueGreenDiagram } from './diagrams/blue-green-diagrams'
+
+Not every system needs a cluster. The application in this post is an internal web app with a Vue frontend, a NestJS API, PostgreSQL and RabbitMQ, running on a single modest Linux VM (the recommended spec is 4 vCPUs and 4 GB of RAM). What it *did* need was releases that don't kick people out mid-task, and a way back that takes seconds, not a restore.
+
+Blue/green gets you both, and on one machine it's surprisingly little machinery: two copies of the stack, a reverse proxy, and a symlink.
+
+## The shape of it
+
+<BlueGreenDiagram />
+
+- **Two complete stacks** run side by side, *blue* and *green*, each with its own frontend, backend, database and message broker. They're the same Compose project with color-suffixed services published on different host ports.
+- **Nginx runs on the host**, not in a container. It's the only thing listening on 80 and 443, terminates TLS, and proxies to whichever stack is active.
+- **A symlink picks the active color.** Nginx includes `active-upstream.conf`, which points at either the blue or the green upstream file. Switching colors means changing the link and reloading Nginx.
+
+At any moment one color serves traffic and the other is either idle (the previous release, ready for rollback) or being prepared with the next one.
+
+## Upstreams as swappable files
+
+Each color gets a small file that only defines upstreams:
+
+```nginx
+# /etc/nginx/sites-available/prod-upstream-blue.conf
+upstream app_frontend { server 127.0.0.1:5001; }
+upstream app_backend  { server 127.0.0.1:4001; }
+```
+
+```nginx
+# /etc/nginx/sites-available/prod-upstream-green.conf
+upstream app_frontend { server 127.0.0.1:5002; }
+upstream app_backend  { server 127.0.0.1:4002; }
+```
+
+The site configuration never mentions a color. It only refers to the upstream names:
+
+```nginx
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name app.example.com;
+
+    ssl_certificate     /etc/ssl/app/chain.crt;
+    ssl_certificate_key /etc/ssl/app/server.key;
+
+    location /api/ {
+        proxy_pass http://app_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /socket.io/ {
+        proxy_pass http://app_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    location / {
+        proxy_pass http://app_frontend;
+    }
+}
+```
+
+`sites-enabled/` then holds two symlinks per environment: the site itself and `prod-active-upstream.conf`, which points at one of the two upstream files. The same trick runs a QA environment on the same host with its own pair of upstream files and its own link.
+
+<Callout kind="warning" title="Include each upstream exactly once">
+  The main config already includes `sites-enabled/*`, so the active-upstream link is picked up on its own. Don't also include the upstream files from the site config: defining the same `upstream` twice fails `nginx -t` with a "duplicate upstream" error. Naming the link so it sorts before the site files keeps the loaded config readable top to bottom.
+</Callout>
+
+Bind the stacks' published ports to loopback (`"127.0.0.1:4001:<container port>"` in Compose) so only Nginx can reach them. The idle color is then invisible from outside even though it's running.
+
+## A switch script that can't take the proxy down
+
+Changing the link by hand works until someone fat-fingers a path and reloads Nginx into a broken config. The switch script exists to make that impossible: it changes the link, asks Nginx to validate the whole configuration, and only then reloads. If validation fails, it puts the old link back.
+
+```bash
+#!/usr/bin/env bash
+# Usage: switch-active-upstream.sh [--dry-run] <env> <blue|green>
+set -euo pipefail
+
+NGINX_AVAILABLE=/etc/nginx/sites-available
+NGINX_ENABLED=/etc/nginx/sites-enabled
+
+dry_run=false
+if [[ "${1:-}" == "--dry-run" ]]; then dry_run=true; shift; fi
+
+env="${1:?usage: $0 [--dry-run] <env> <blue|green>}"
+color="${2:?usage: $0 [--dry-run] <env> <blue|green>}"
+[[ "$color" == blue || "$color" == green ]] || { echo "color must be blue or green" >&2; exit 1; }
+
+target="$NGINX_AVAILABLE/${env}-upstream-${color}.conf"
+link="$NGINX_ENABLED/${env}-active-upstream.conf"
+[[ -f "$target" ]] || { echo "missing $target" >&2; exit 1; }
+previous="$(readlink "$link" || true)"
+
+echo "$link: ${previous:-<none>} -> $target"
+if $dry_run; then exit 0; fi
+
+ln -sfn "$target" "$link"
+if nginx -t; then
+    systemctl reload nginx
+    echo "$env is now served by $color"
+else
+    echo "nginx -t failed; restoring the previous upstream" >&2
+    if [[ -n "$previous" ]]; then ln -sfn "$previous" "$link"; else rm -f "$link"; fi
+    exit 1
+fi
+```
+
+A companion one-liner answers "which color is live?" by reading the link, which is the first thing you want to know before any deploy:
+
+```bash
+readlink /etc/nginx/sites-enabled/prod-active-upstream.conf | grep -oE 'blue|green'
+```
+
+Why `reload` and not `restart`? A reload starts new worker processes with the new configuration and lets the old workers finish the requests they're already handling. Nobody sees an error. Long-lived WebSocket connections stay on the old workers until they close, so set `worker_shutdown_timeout` (say, 30s) to make sure old workers eventually exit and clients reconnect to the new color.
+
+## The deploy, step by step
+
+Say blue is live:
+
+1. **Check the live color** with the one-liner above. Green is the target.
+2. **Update the code** on the server and rebuild *only the idle color's* services:
+   ```bash
+   docker compose -f compose.prod.yml up -d --build \
+     backend_green frontend_green postgres_green rabbitmq_green
+   ```
+   Never run a plain `docker compose down` here: it stops every service in the project, including the live color.
+3. **Refresh green's database** from a fresh dump of blue's, so the new release starts from current data.
+4. **Run migrations** against green, inside the new backend container.
+5. **Smoke-test green directly** on its loopback ports before any user sees it. At minimum, gate on a health endpoint:
+   ```bash
+   curl -fsS http://127.0.0.1:4002/health
+   ```
+6. **Switch**: `sudo switch-active-upstream.sh prod green`.
+
+Rolling back is step 6 with the other color. Blue is still running the previous release against its own database, so the rollback takes as long as an Nginx reload.
+
+## The hard part is the data
+
+Two databases are what make rollbacks instant and failed migrations harmless: a migration that blows up on green never touches the database blue is serving. That safety has two costs you have to plan around.
+
+**Writes between the dump and the switch are lost.** Anything users write to blue after step 3 isn't in green. For an internal app used during business hours, the simplest answer is to deploy in a quiet window; for a busier system, put the app in read-only mode for the minutes between dump and switch.
+
+**Writes after the switch don't survive a rollback.** If you roll back to blue an hour later, that hour of data lives only in green's database. Rollback is for the first minutes after a release; after that, roll *forward* with a fix.
+
+<Callout kind="tip" title="The alternative: one database, expand/contract migrations">
+  Most blue/green setups share a single database and make every migration backward-compatible: add the new column, deploy code that writes both, backfill, and only drop the old column a release later. Both colors can run against the same data, so nothing is lost either way. It takes more discipline per change; separate databases trade that discipline for a data-sync step.
+</Callout>
+
+The message broker has the same issue in miniature. Each color has its own RabbitMQ, so jobs queued on blue just before the switch are still sitting in blue's queues. Keep blue's consumers running until its queues drain before you stop anything.
+
+## TLS at the edge
+
+Since Nginx terminates TLS for both colors, certificates are a host concern, not a container one. Three details are worth getting right:
+
+- **Chain order.** Nginx expects one file with your certificate first, then the intermediates, optionally followed by the root: `cat domain.crt intermediate.crt > chain.crt`. Put your certificate anywhere but first and Nginx refuses to start ("key values mismatch"); leave the intermediates out and some clients, often mobile apps and command-line tools, fail the handshake while desktop browsers look fine.
+- **Key permissions.** Nginx needs a key without a passphrase to start unattended, so lock the file down instead: owned by `root`, mode `600`. The master process reads it as root before dropping privileges, so workers never need access.
+- **Expiry.** Put the date somewhere you'll see it. `openssl x509 -enddate -noout -in chain.crt` in a monitoring check beats a calendar reminder.
+
+After replacing a certificate, it's the same rule as the switch script: `nginx -t`, then `systemctl reload nginx`.
+
+## Disaster recovery is just a fresh deploy
+
+If the VM dies, recovery is the first deploy all over again on a new machine, which is a strong argument for keeping that first deploy written down and boring:
+
+1. Provision a Debian-based VM with ports 22, 80 and 443 open.
+2. Install Docker and Nginx; add a deploy key so the server can pull the repository.
+3. Clone the repository and create the environment files (database, backend and frontend for each environment).
+4. Create the Docker networks, start the blue services, restore the latest database dump into blue's Postgres and run migrations.
+5. Copy the Nginx files into `sites-available`, create the links, install the certificate, and run the switch script to point at blue.
+
+Your recovery point is your backup frequency and your recovery time is how long that list takes. Both are only real if you've actually rehearsed a restore.
+
+## What I'd change
+
+This setup buys zero-downtime releases and near-instant rollbacks with very little machinery. With hindsight, I'd change a few things:
+
+- **Build in CI, not on the server.** Building images on the production VM competes with live traffic for CPU and memory. Pushing tagged images to a registry and pulling them on deploy makes releases faster and every rollback a known artifact.
+- **Script the whole deploy.** Every manual step (dump, restore, migrate, health check, switch) is a chance to skip one. One script with the health gate built in removes the temptation.
+- **Move to backward-compatible migrations** and a shared database, so data never has to be copied between colors.
+- **Codify the server** with cloud-init or Ansible, so disaster recovery is a command, not a document.
+
+None of that requires leaving the single VM. Blue/green is a pattern, not a platform, and a symlink is a perfectly good load balancer switch.

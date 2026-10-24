@@ -1,0 +1,324 @@
+---
+title: Inventory-driven network monitoring with Prometheus HTTP service discovery
+description: A small Go service turns a device inventory into Prometheus targets, so every switch is pinged and polled over SNMP, and every metric carries its model, cabinet and map coordinates.
+date: 2026-10-24
+tags: [prometheus, grafana, snmp, go, observability]
+---
+
+import { MonitoringFlowDiagram } from './diagrams/monitoring-diagrams'
+
+When a network switch dies, "switch 10.20.4.17 is down" is only half an answer. The people who have to fix it want to know *which cabinet it's in and where that cabinet is*. That information usually lives in an inventory spreadsheet, not in the monitoring system.
+
+This post describes a monitoring stack built around that idea: the device inventory is the source of truth, Prometheus discovers what to monitor from it, and every metric arrives already labeled with the device's model, vendor, cabinet and coordinates, ready to drop onto a map.
+
+## The moving parts
+
+Everything runs as one Docker Compose project per network segment:
+
+- **Prometheus** scrapes, stores and evaluates alerts.
+- **snmp_exporter** turns "give me interface metrics for this IP" into SNMP walks against the device.
+- **blackbox_exporter** answers "is this IP reachable?" with an ICMP ping.
+- **PostgreSQL** holds the inventory: one row per device.
+- **A discovery service**, a small Go program, reads the inventory and serves it in the format Prometheus' HTTP service discovery expects.
+- **Grafana** draws dashboards and the map.
+
+<MonitoringFlowDiagram />
+
+The key design choice is that **Prometheus never contains a list of devices**. Its configuration says *where to ask* for targets and *how to scrape* them. Adding a switch is an inventory change, not a Prometheus change.
+
+## The inventory
+
+The inventory is deliberately boring: one table, one row per device.
+
+```sql
+CREATE TABLE devices (
+  id         int PRIMARY KEY,
+  type       text NOT NULL,   -- switch, router, …
+  model      text NOT NULL,
+  vendor     text NOT NULL,
+  ip         inet NOT NULL UNIQUE,
+  cabinet    text NOT NULL,
+  latitude   double precision NOT NULL,
+  longitude  double precision NOT NULL
+);
+```
+
+Inventory data usually already lives in spreadsheets, so the input format is a semicolon-separated CSV per segment, loaded into Postgres on deploy:
+
+```sql
+BEGIN;
+TRUNCATE devices;
+COPY devices (id, type, model, vendor, ip, cabinet, latitude, longitude)
+  FROM '/inventory/devices.csv' WITH (FORMAT csv, DELIMITER ';', HEADER true);
+COMMIT;
+```
+
+<Callout kind="warning" title="initdb scripts only run once">
+  It's tempting to load the CSV from `/docker-entrypoint-initdb.d`. Those scripts only run when the data directory is empty, so with a persistent volume an edited CSV silently never reaches the database. Make the load an explicit, idempotent step of every deploy, like the transaction above.
+</Callout>
+
+## Discovery: inventory in, targets out
+
+Prometheus' [HTTP service discovery](https://prometheus.io/docs/prometheus/latest/http_sd/) polls a URL that returns a JSON array of *target groups*: a list of addresses plus labels to attach to them.
+
+```json
+[
+  {
+    "targets": ["10.20.4.17"],
+    "labels": {
+      "device_type": "switch",
+      "model": "24-port PoE",
+      "vendor": "acme",
+      "cabinet": "C-12",
+      "latitude": "12.345600",
+      "longitude": "-45.678900"
+    }
+  }
+]
+```
+
+The discovery service is one HTTP handler that runs a query and reshapes the rows:
+
+```go
+type TargetGroup struct {
+	Targets []string          `json:"targets"`
+	Labels  map[string]string `json:"labels"`
+}
+
+func targetsHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		rows, err := db.QueryContext(r.Context(), `
+			SELECT host(ip), type, model, vendor, cabinet, latitude, longitude
+			FROM devices`)
+		if err != nil {
+			http.Error(w, "inventory unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		defer rows.Close()
+
+		groups := []TargetGroup{}
+		for rows.Next() {
+			var ip, kind, model, vendor, cabinet string
+			var lat, lon float64
+			if err := rows.Scan(&ip, &kind, &model, &vendor, &cabinet, &lat, &lon); err != nil {
+				http.Error(w, "inventory unreadable", http.StatusInternalServerError)
+				return
+			}
+			groups = append(groups, TargetGroup{
+				Targets: []string{ip},
+				Labels: map[string]string{
+					"device_type": kind,
+					"model":       model,
+					"vendor":      vendor,
+					"cabinet":     cabinet,
+					"latitude":    strconv.FormatFloat(lat, 'f', 6, 64),
+					"longitude":   strconv.FormatFloat(lon, 'f', 6, 64),
+				},
+			})
+		}
+		if err := rows.Err(); err != nil {
+			http.Error(w, "inventory unreadable", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(groups)
+	}
+}
+```
+
+<Callout kind="tip" title="Fail loudly, never return an empty list">
+  If the discovery endpoint returns an error, Prometheus keeps using the last target list it fetched successfully. If it returns `[]`, Prometheus drops every target, and with them every "device down" alert. When the inventory can't be read, answer with a 5xx.
+</Callout>
+
+## Scraping through exporters
+
+Neither SNMP nor ICMP is something Prometheus speaks natively. Both exporters use the *multi-target exporter* pattern: Prometheus scrapes the exporter and passes the real device in a `target` query parameter. Relabeling does the rewrite:
+
+```yaml
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: snmp
+    http_sd_configs:
+      - url: http://discovery-service:8080/targets
+        refresh_interval: 1m
+    metrics_path: /snmp
+    params:
+      module: [if_mib]
+      auth: [segment_a]
+    relabel_configs:
+      - source_labels: [__address__]   # 10.20.4.17
+        target_label: __param_target   # → ?target=10.20.4.17
+      - source_labels: [__param_target]
+        target_label: instance         # keep the device IP as `instance`
+      - target_label: __address__
+        replacement: snmp-exporter:9116 # but actually scrape the exporter
+
+  - job_name: icmp
+    http_sd_configs:
+      - url: http://discovery-service:8080/targets
+        refresh_interval: 1m
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+```
+
+The same target list feeds both jobs, so every device in the inventory is both pinged and polled.
+
+### Where the labels come from
+
+Notice there's nothing in that config about `vendor`, `cabinet` or coordinates, yet they end up on every series:
+
+```promql
+probe_success{job="icmp", instance="10.20.4.17", cabinet="C-12", vendor="acme", …}
+```
+
+Labels returned by service discovery become **target labels**, and Prometheus attaches target labels to every series scraped from that target. No `metric_relabel_configs` needed. The only labels that disappear are the ones starting with `__`, which are dropped after relabeling; that's why the `__param_target` trick doesn't leak into the stored data.
+
+### Exporter configuration
+
+blackbox_exporter needs a module that pings:
+
+```yaml
+modules:
+  icmp:
+    prober: icmp
+    timeout: 5s
+    icmp:
+      preferred_ip_protocol: ip4
+```
+
+ICMP needs permission to open a raw socket (or an unprivileged ping socket). If every probe fails with "operation not permitted", that's the container, not the network: grant `cap_add: [NET_RAW]` to the blackbox service, or allow unprivileged ping with the `net.ipv4.ping_group_range` sysctl. Otherwise it looks a lot like the whole network is down.
+
+snmp_exporter separates *what to walk* (modules, generated from MIBs; the stock `if_mib` covers interfaces and uptime) from *how to authenticate* (auths). Each segment gets its own auth entry:
+
+```yaml
+auths:
+  segment_a:
+    version: 2
+    community: <read-only community>
+  segment_b:
+    version: 3
+    security_level: authPriv
+    username: monitoring
+    auth_protocol: SHA
+    password: <auth secret>
+    priv_protocol: AES
+    priv_password: <privacy secret>
+```
+
+SNMPv2c sends the community string in clear text. Where devices support it, v3 with `authPriv` is worth the extra lines.
+
+## One stack per segment
+
+Each network segment gets its own stack, rather than one central Prometheus reaching into all of them. That keeps segments independent, and works even when the segments can't route to each other. The Compose file stays identical; an environment variable picks the segment-specific Prometheus config:
+
+```yaml
+services:
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus/prometheus.${ENVIRONMENT:?set ENVIRONMENT}.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+```
+
+```bash
+ENVIRONMENT=segment_a docker compose up --build -d
+```
+
+The `:?` form makes Compose refuse to start if `ENVIRONMENT` is unset, instead of mounting a file called `prometheus..yml`. Adding a segment is then a checklist: a new inventory CSV, a new `prometheus.<segment>.yml`, a new auth entry in `snmp.yml`, and one command.
+
+## Turning metrics into answers
+
+With the labels in place, the useful queries are short.
+
+Which devices are unreachable right now?
+
+```promql
+probe_success{job="icmp"} == 0
+```
+
+Which ports are down that are *supposed* to be up? (`ifOperStatus` 2 means down; `ifAdminStatus` 1 means an administrator enabled it.)
+
+```promql
+ifOperStatus{job="snmp"} == 2
+  and on (instance, ifIndex) ifAdminStatus{job="snmp"} == 1
+```
+
+Traffic per interface, in bits per second:
+
+```promql
+rate(ifHCInOctets{job="snmp"}[5m]) * 8
+```
+
+And the alert that wakes someone up already says where to go:
+
+```yaml
+groups:
+  - name: network
+    rules:
+      - alert: DeviceUnreachable
+        expr: probe_success{job="icmp"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.instance }} ({{ $labels.vendor }} {{ $labels.model }}) is unreachable"
+          description: "Cabinet {{ $labels.cabinet }} at {{ $labels.latitude }}, {{ $labels.longitude }}"
+```
+
+With a 15-second scrape interval, the `for: 30s` clause means a device has to fail two or three probes in a row before anyone is paged, which filters out the occasional dropped ping without delaying real outages much.
+
+In Grafana, the same labels drive everything else: dashboard variables like `label_values(probe_success, vendor)` for filtering, and a **Geomap** panel fed by an instant `probe_success` query in table format, using the `latitude` and `longitude` columns as coordinates (labels are strings, so add a *Convert field type* transformation to make them numbers) and coloring each point by its value. A dead switch shows up as a red dot on the cabinet it lives in.
+
+<Callout kind="note" title="Labels are identity">
+  In Prometheus, changing any label creates a new time series. Moving a device to another cabinet starts a fresh series and the old one goes stale. That's fine for data that changes a few times a year, like an inventory. Never put fast-changing values in labels.
+</Callout>
+
+## Extending the inventory
+
+As described, adding a column to the inventory (say, `building`) touches three places: the CSV, the table, and the Go code that builds the label map. The Go change is the one that hurts, because it turns a data change into a code change and a rebuild.
+
+The fix is to stop listing columns in code. Let Postgres turn each row into JSON and expose every column except the IP as a label:
+
+```go
+rows, err := db.QueryContext(r.Context(), `
+	SELECT host(ip), to_jsonb(d) - 'id' - 'ip'
+	FROM devices d`)
+// …
+var ip string
+var raw []byte
+if err := rows.Scan(&ip, &raw); err != nil { /* … */ }
+
+var attrs map[string]any
+if err := json.Unmarshal(raw, &attrs); err != nil { /* … */ }
+
+labels := make(map[string]string, len(attrs))
+for name, value := range attrs {
+	labels[name] = fmt.Sprint(value)
+}
+```
+
+Now a new column needs a CSV header and an `ALTER TABLE`, and it shows up in Prometheus on the next discovery refresh. Column names are already valid label names as long as they stick to letters, digits and underscores.
+
+## What I'd keep, what I'd change
+
+The core idea held up: **the inventory owns the device list, Prometheus owns the behavior.** Nobody edits YAML to add a switch, and every alert arrives with enough context to act on.
+
+What I'd change:
+
+- **Generic labels**, as above, so the inventory can grow without code changes.
+- **An inventory UI or API** instead of CSV files on disk. CSVs were the right first step because that's where the data already lived, but they make "who changed this device and when" a `git blame` question.
+- **SNMPv3 everywhere** devices allow it.
+- **Federation or remote write** from each segment's Prometheus to one central store, once there's a routable path, so there's one map for the whole network instead of one per segment.
