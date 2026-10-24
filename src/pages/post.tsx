@@ -1,6 +1,6 @@
 import { ArrowLeft, ListTree } from 'lucide-react'
 import type { MDXContent } from 'mdx/types'
-import { motion, useScroll, useSpring } from 'motion/react'
+import { m, useScroll, useSpring } from 'motion/react'
 import { lazy, Suspense, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { mdxComponents } from '@/components/blog/mdx-components'
@@ -8,6 +8,8 @@ import { PostMetaLine } from '@/components/blog/post-card'
 import { TableOfContents } from '@/components/blog/table-of-contents'
 import { Badge } from '@/components/ui/badge'
 import { findPost, loadPostBody, posts } from '@/content/posts'
+import { postPageMeta } from '@/content/seo'
+import { usePageMeta } from '@/lib/use-page-meta'
 import { NotFoundPage } from './not-found'
 
 // One lazy component per post, created once, so each body is its own chunk.
@@ -18,6 +20,7 @@ const postBodies: Record<string, MDXContent> = Object.fromEntries(
 export function PostPage() {
   const { slug = '' } = useParams()
   const post = findPost(slug)
+  usePageMeta(post && postPageMeta(post))
   const [tocOpen, setTocOpen] = useState(false)
   const { scrollYProgress } = useScroll()
   const progress = useSpring(scrollYProgress, { stiffness: 200, damping: 40 })
@@ -27,7 +30,7 @@ export function PostPage() {
 
   return (
     <>
-      <motion.div
+      <m.div
         aria-hidden="true"
         style={{ scaleX: progress }}
         className="fixed inset-x-0 top-14 z-30 h-0.5 origin-left bg-brand"

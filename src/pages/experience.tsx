@@ -1,5 +1,5 @@
 import { Award, GraduationCap, Languages, MapPin } from 'lucide-react'
-import { motion, useReducedMotion, useScroll, useSpring } from 'motion/react'
+import { m, useReducedMotion, useScroll, useSpring } from 'motion/react'
 import { useRef, type ReactNode } from 'react'
 import { Reveal } from '@/components/motion/reveal'
 import { SectionHeading } from '@/components/section-heading'
@@ -7,8 +7,11 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { certifications, education, interests, languages, roles, type Role } from '@/content/cv'
 import { profile } from '@/content/profile'
+import { staticPages } from '@/content/seo'
+import { usePageMeta } from '@/lib/use-page-meta'
 
 export function ExperiencePage() {
+  usePageMeta(staticPages[1])
   return (
     <div className="space-y-20">
       <Reveal className="max-w-2xl space-y-4">
@@ -99,7 +102,7 @@ function Timeline() {
       </Reveal>
       <ol ref={ref} className="relative space-y-12 pl-8 sm:pl-10">
         <span aria-hidden="true" className="absolute top-2 bottom-2 left-[7px] w-px bg-border" />
-        <motion.span
+        <m.span
           aria-hidden="true"
           style={{ scaleY: reduceMotion ? 1 : progress }}
           className="absolute top-2 bottom-2 left-[7px] w-px origin-top bg-brand"

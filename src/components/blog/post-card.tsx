@@ -12,16 +12,18 @@ export function PostMetaLine({ post }: { post: PostMeta }) {
   )
 }
 
-export function PostCard({ post }: { post: PostMeta }) {
+/** `headingLevel` keeps the outline valid: h2 under a page title, h3 inside a section. */
+export function PostCard({ post, headingLevel = 'h3' }: { post: PostMeta; headingLevel?: 'h2' | 'h3' }) {
+  const Heading = headingLevel
   return (
     <Card className="group relative h-full transition-shadow hover:ring-brand/50">
       <CardContent className="flex h-full flex-col gap-3">
         <PostMetaLine post={post} />
-        <h3 className="font-heading text-lg font-semibold tracking-tight text-balance">
+        <Heading className="font-heading text-lg font-semibold tracking-tight text-balance">
           <Link to={`/blog/${post.slug}`} className="after:absolute after:inset-0">
             {post.title}
           </Link>
-        </h3>
+        </Heading>
         <p className="flex-1 text-pretty text-muted-foreground">{post.description}</p>
         <div className="flex items-end justify-between gap-4">
           <div className="flex flex-wrap gap-1.5">

@@ -1,5 +1,5 @@
 import { ArrowRight, MapPin } from 'lucide-react'
-import { motion, type Variants } from 'motion/react'
+import { m, type Variants } from 'motion/react'
 import { Link } from 'react-router'
 import { PostCard } from '@/components/blog/post-card'
 import { Reveal } from '@/components/motion/reveal'
@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { posts } from '@/content/posts'
 import { profile } from '@/content/profile'
+import { staticPages } from '@/content/seo'
+import { usePageMeta } from '@/lib/use-page-meta'
 
 const hero: Variants = {
   hidden: {},
@@ -21,6 +23,7 @@ const heroItem: Variants = {
 }
 
 export function HomePage() {
+  usePageMeta(staticPages[0])
   return (
     <div className="space-y-20">
       <section className="relative">
@@ -28,8 +31,8 @@ export function HomePage() {
           aria-hidden="true"
           className="pointer-events-none absolute -inset-x-4 -top-16 -bottom-8 -z-10 bg-[radial-gradient(var(--border)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_at_top_left,black,transparent_70%)] [background-size:20px_20px]"
         />
-        <motion.div variants={hero} initial="hidden" animate="visible" className="max-w-2xl space-y-6">
-          <motion.p
+        <m.div variants={hero} initial="hidden" animate="visible" className="max-w-2xl space-y-6">
+          <m.p
             variants={heroItem}
             className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-sm text-muted-foreground"
           >
@@ -47,20 +50,20 @@ export function HomePage() {
               <MapPin className="size-3.5" />
               {profile.location}
             </span>
-          </motion.p>
-          <motion.h1
+          </m.p>
+          <m.h1
             variants={heroItem}
             className="font-heading text-4xl font-semibold tracking-tight text-balance sm:text-5xl"
           >
             {profile.name}
-          </motion.h1>
-          <motion.p variants={heroItem} className="text-xl text-pretty text-foreground/90">
+          </m.h1>
+          <m.p variants={heroItem} className="text-xl text-pretty text-foreground/90">
             {profile.tagline}
-          </motion.p>
-          <motion.p variants={heroItem} className="text-pretty text-muted-foreground">
+          </m.p>
+          <m.p variants={heroItem} className="text-pretty text-muted-foreground">
             {profile.summary}
-          </motion.p>
-          <motion.div variants={heroItem} className="flex flex-wrap gap-3 pt-2">
+          </m.p>
+          <m.div variants={heroItem} className="flex flex-wrap gap-3 pt-2">
             <Button size="lg" asChild>
               <Link to="/experience">
                 View experience
@@ -73,8 +76,8 @@ export function HomePage() {
             <Button size="lg" variant="ghost" asChild>
               <Link to="/contact">Get in touch</Link>
             </Button>
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       </section>
 
       <section className="space-y-6">

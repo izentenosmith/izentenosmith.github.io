@@ -55,6 +55,19 @@ function extractMeta(slug: string, source: string): PostMeta {
   }
 }
 
+/** Reads and parses every post in `postsDir`, newest first. */
+export async function readPosts(postsDir: string, onFile?: (path: string) => void) {
+  const files = (await readdir(postsDir)).filter((file) => file.endsWith('.mdx'))
+  const posts = await Promise.all(
+    files.map(async (file) => {
+      const fullPath = path.join(postsDir, file)
+      onFile?.(fullPath)
+      return extractMeta(path.basename(file, '.mdx'), await readFile(fullPath, 'utf8'))
+    }),
+  )
+  return posts.sort((a, b) => b.date.localeCompare(a.date) || a.title.localeCompare(b.title))
+}
+
 /**
  * Exposes every post's metadata (frontmatter, reading time, headings) as
  * `virtual:posts`, so the blog index never has to load post bodies.
@@ -65,15 +78,7 @@ export function postsPlugin(postsDir: string): Plugin {
     resolveId: (id) => (id === VIRTUAL_ID ? RESOLVED_ID : undefined),
     async load(id) {
       if (id !== RESOLVED_ID) return
-      const files = (await readdir(postsDir)).filter((file) => file.endsWith('.mdx'))
-      const posts = await Promise.all(
-        files.map(async (file) => {
-          const fullPath = path.join(postsDir, file)
-          this.addWatchFile(fullPath)
-          return extractMeta(path.basename(file, '.mdx'), await readFile(fullPath, 'utf8'))
-        }),
-      )
-      posts.sort((a, b) => b.date.localeCompare(a.date) || a.title.localeCompare(b.title))
+      const posts = await readPosts(postsDir, (file) => this.addWatchFile(file))
       return `export default ${JSON.stringify(posts)}`
     },
     handleHotUpdate({ file, server }) {

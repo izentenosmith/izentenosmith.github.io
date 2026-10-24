@@ -8,6 +8,9 @@ import remarkFrontmatter from 'remark-frontmatter'
 import remarkGfm from 'remark-gfm'
 import { defineConfig } from 'vite'
 import { postsPlugin } from './mdx/posts-plugin.ts'
+import { routeHtmlPlugin } from './mdx/route-html-plugin.ts'
+
+const postsDir = path.resolve(import.meta.dirname, 'src/content/posts')
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -18,14 +21,30 @@ export default defineConfig({
         remarkPlugins: [remarkFrontmatter, remarkGfm],
         rehypePlugins: [
           rehypeSlug,
-          [rehypeShiki, { themes: { light: 'github-light', dark: 'github-dark' }, defaultColor: false }],
+          [rehypeShiki, { themes: { light: 'github-light-default', dark: 'github-dark-default' }, defaultColor: false }],
         ],
       }),
     },
-    postsPlugin(path.resolve(import.meta.dirname, 'src/content/posts')),
+    postsPlugin(postsDir),
+    routeHtmlPlugin(postsDir),
     react({ include: /\.(mdx|jsx|tsx)$/ }),
     tailwindcss(),
   ],
+  build: {
+    rolldownOptions: {
+      output: {
+        // Long-lived vendor code in its own chunks, so a content change doesn't
+        // invalidate the browser's cache of React or the router.
+        codeSplitting: {
+          groups: [
+            { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
+            { name: 'router', test: /node_modules[\\/]react-router[\\/]/ },
+            { name: 'ui', test: /node_modules[\\/](@radix-ui|radix-ui|@floating-ui|react-remove-scroll)/ },
+          ],
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),
