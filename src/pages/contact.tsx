@@ -5,6 +5,8 @@ import { CopyButton } from '@/components/copy-button'
 import { Reveal } from '@/components/motion/reveal'
 import { Card, CardContent } from '@/components/ui/card'
 import { profile } from '@/content/profile'
+import { staticPages } from '@/content/seo'
+import { usePageMeta } from '@/lib/use-page-meta'
 
 type Channel = {
   label: string
@@ -31,6 +33,7 @@ const channels: Channel[] = [
 ]
 
 export function ContactPage() {
+  usePageMeta(staticPages[3])
   return (
     <div className="max-w-2xl space-y-10">
       <Reveal className="space-y-4">

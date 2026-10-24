@@ -1,4 +1,4 @@
-import { motion, type HTMLMotionProps } from 'motion/react'
+import { m, type HTMLMotionProps } from 'motion/react'
 
 type RevealProps = HTMLMotionProps<'div'> & {
   delay?: number
@@ -7,7 +7,7 @@ type RevealProps = HTMLMotionProps<'div'> & {
 /** Fades and lifts its content in the first time it scrolls into view. */
 export function Reveal({ delay = 0, ...props }: RevealProps) {
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 16 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-48px' }}

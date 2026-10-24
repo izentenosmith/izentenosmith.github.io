@@ -1,5 +1,5 @@
 import { Check, Copy, X } from 'lucide-react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -35,7 +35,7 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
       <TooltipTrigger asChild>
         <Button variant="outline" size="icon" onClick={copy} aria-label={label}>
           <AnimatePresence mode="wait" initial={false}>
-            <motion.span
+            <m.span
               key={status}
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -43,7 +43,7 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
               transition={{ duration: 0.15 }}
             >
               {status === 'idle' ? <Copy className="size-4" /> : feedback[status].icon}
-            </motion.span>
+            </m.span>
           </AnimatePresence>
         </Button>
       </TooltipTrigger>

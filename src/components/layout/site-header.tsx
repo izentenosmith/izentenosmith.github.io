@@ -1,5 +1,5 @@
 import { Menu } from 'lucide-react'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router'
 import { ThemeToggle } from '@/components/theme/theme-toggle'
@@ -38,7 +38,7 @@ export function SiteHeader() {
               {({ isActive }) => (
                 <>
                   {isActive && (
-                    <motion.span
+                    <m.span
                       layoutId="nav-active"
                       className="absolute inset-0 -z-10 rounded-md bg-muted"
                       transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}

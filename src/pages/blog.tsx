@@ -1,8 +1,11 @@
 import { PostCard } from '@/components/blog/post-card'
 import { Reveal } from '@/components/motion/reveal'
 import { posts } from '@/content/posts'
+import { staticPages } from '@/content/seo'
+import { usePageMeta } from '@/lib/use-page-meta'
 
 export function BlogPage() {
+  usePageMeta(staticPages[2])
   return (
     <div className="space-y-12">
       <Reveal className="max-w-2xl space-y-4">
@@ -16,7 +19,7 @@ export function BlogPage() {
         {posts.map((post, index) => (
           <li key={post.slug}>
             <Reveal delay={index * 0.06} className="h-full">
-              <PostCard post={post} />
+              <PostCard post={post} headingLevel="h2" />
             </Reveal>
           </li>
         ))}
