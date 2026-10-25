@@ -72,3 +72,29 @@ test('reduced motion shows final states immediately', async ({ browser }) => {
   await expect(impact.locator('[aria-hidden="true"]').first()).toHaveText('40×', { timeout: 100 })
   await context.close()
 })
+
+test('phones show the top tags and expand the rest on demand', async ({ page, isMobile }) => {
+  await page.goto('/blog')
+  const tags = page.getByRole('navigation', { name: 'Filter posts by tag' }).getByRole('link')
+  const toggle = page.getByRole('button', { name: /^More tags/ })
+
+  if (!isMobile) {
+    await expect(toggle).toBeHidden()
+    return
+  }
+
+  // "All" plus the six top tags, which cover every post's lead tag.
+  await expect(tags.filter({ visible: true })).toHaveCount(7)
+  for (const lead of ['postgresql', 'deployment', 'prometheus', 'azure']) {
+    await expect(page.getByRole('link', { name: `Posts tagged ${lead}`, exact: true })).toBeVisible()
+  }
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await toggle.click()
+  await expect(page.getByRole('button', { name: 'Fewer tags' })).toHaveAttribute('aria-expanded', 'true')
+  await expect(tags.filter({ visible: true })).toHaveCount(await tags.count())
+
+  // A tag past the limit stays visible once it's active, even after collapsing.
+  await page.getByRole('link', { name: 'Posts tagged workflows', exact: true }).click()
+  await page.getByRole('button', { name: 'Fewer tags' }).click()
+  await expect(page.getByRole('link', { name: 'Posts tagged workflows', exact: true })).toBeVisible()
+})
