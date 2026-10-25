@@ -50,4 +50,9 @@ export const routes = [
     heading: 'Designing a nightly ML scoring pipeline',
     title: 'Designing a nightly ML scoring pipeline',
   },
+  {
+    path: '/blog/monitoring-stack-as-code-on-docker-swarm',
+    heading: 'A monitoring stack as code on a two-node Docker Swarm',
+    title: 'A monitoring stack as code on a two-node Docker Swarm',
+  },
 ]

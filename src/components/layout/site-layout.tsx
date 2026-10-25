@@ -10,6 +10,25 @@ import { SiteHeader } from './site-header'
 const loadMotionFeatures = () => import('@/components/motion/features').then((module) => module.default)
 
 /**
+ * Feeds the `.spotlight` hover glow (index.css): one listener for the whole
+ * page writes the pointer position into CSS variables on the hovered card.
+ */
+function useSpotlight() {
+  useEffect(() => {
+    const onMove = (event: PointerEvent) => {
+      if (event.pointerType !== 'mouse') return
+      const card = (event.target as Element | null)?.closest<HTMLElement>('.spotlight')
+      if (!card) return
+      const rect = card.getBoundingClientRect()
+      card.style.setProperty('--spot-x', `${event.clientX - rect.left}px`)
+      card.style.setProperty('--spot-y', `${event.clientY - rect.top}px`)
+    }
+    document.addEventListener('pointermove', onMove, { passive: true })
+    return () => document.removeEventListener('pointermove', onMove)
+  }, [])
+}
+
+/**
  * After client-side navigation, move focus to the new page's content so
  * keyboard and screen reader users start there instead of on the old link.
  */
@@ -31,6 +50,7 @@ function useFocusOnRouteChange() {
 
 export function SiteLayout() {
   const mainRef = useFocusOnRouteChange()
+  useSpotlight()
 
   return (
     <LazyMotion features={loadMotionFeatures} strict>
@@ -42,7 +62,8 @@ export function SiteLayout() {
           >
             Skip to content
           </a>
-          <div className="flex min-h-dvh flex-col">
+          <div className="relative isolate flex min-h-dvh flex-col">
+            <div aria-hidden="true" className="aurora" />
             <SiteHeader />
             <main
               ref={mainRef}

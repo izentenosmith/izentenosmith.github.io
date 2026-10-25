@@ -238,7 +238,7 @@ function InfoCard({
   children: ReactNode
 }) {
   return (
-    <div className="h-full space-y-3 rounded-xl border bg-card p-5">
+    <div className="spotlight h-full space-y-3 rounded-2xl border bg-card p-5">
       <div className="flex items-center gap-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted">
           <Icon aria-hidden="true" className="size-4" />

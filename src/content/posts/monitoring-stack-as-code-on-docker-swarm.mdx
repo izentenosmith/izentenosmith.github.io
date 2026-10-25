@@ -1,0 +1,347 @@
+---
+title: A monitoring stack as code on a two-node Docker Swarm
+description: Grafana Alloy, Prometheus, Loki and Grafana watching hosts, containers, a JVM API, a Node frontend and three databases, with dashboards, alerts and DORA metrics all provisioned from git.
+date: 2026-10-24
+tags: [observability, grafana, prometheus, loki, docker]
+---
+
+import { SwarmMonitoringDiagram } from './diagrams/swarm-monitoring-diagrams'
+
+The production environment in this post is small and very real: two Linux VMs joined in a Docker Swarm. The **app node** (2 vCPU, about 8 GB of RAM) runs a Spring Boot API as two replicas, a server-rendered SvelteKit frontend and a Node service for auth, mail and files. The **data node** runs PostgreSQL and Redis. A legacy SQL Server, outside the Swarm, still holds part of the data and is reached over the network.
+
+The goal was one place to answer "is it healthy, and if not, why?" across all of it: hosts, containers, application internals, the three databases, logs, and how the team ships. And because dashboards edited by hand drift silently, **everything is provisioned from git**: collectors, data sources, dashboards and alert rules.
+
+## The shape of it
+
+<SwarmMonitoringDiagram />
+
+The monitoring stack is its own Swarm stack with seven services:
+
+| Service | Runs on | Job |
+| --- | --- | --- |
+| Grafana Alloy | data node | Scrapes every metric, ships data-node logs |
+| Grafana Alloy (logs) | app node | Ships app-node container logs, nothing else |
+| Prometheus | data node | Stores metrics it *receives*, 15 days |
+| Loki | data node | Stores logs |
+| Grafana | data node | Dashboards, alerting, notifications |
+| node_exporter | app node | Host metrics for the app node |
+| cAdvisor | every node (`mode: global`) | Per-container CPU, memory, OOM events |
+
+Everything heavy sits on the data node on purpose. The app node is already overcommitted, so the only monitoring it carries is node_exporter, a cAdvisor task and a log shipper with a hard memory cap.
+
+## Push, not pull: Alloy as the single collector
+
+Prometheus normally scrapes its targets. Here it barely scrapes anything: it runs with the remote-write receiver enabled, and Alloy pushes everything to it.
+
+```yaml title="monitoring-compose.yml"
+prometheus:
+  image: prom/prometheus
+  command:
+    - '--config.file=/etc/prometheus/prometheus.yml'
+    - '--web.enable-remote-write-receiver'
+    - '--storage.tsdb.retention.time=15d'
+  deploy:
+    placement:
+      constraints: [node.labels.type == data] # [!code highlight]
+    resources:
+      limits: { memory: 1024M }
+```
+
+Prometheus' own config shrinks to two jobs: itself and Alloy's self-metrics. All discovery, relabeling and exporter configuration lives in one Alloy file, which is easier to review than scrape jobs spread across Prometheus YAML and a handful of sidecar exporters. Alloy also *embeds* the exporters for the host, PostgreSQL, Redis and SQL Server, so there's no separate container per exporter.
+
+```alloy title="alloy/config.alloy"
+prometheus.remote_write "prometheus" {
+  endpoint { url = "http://monitor_prometheus:9090/api/v1/write" }
+}
+
+prometheus.exporter.postgres "postgres" {
+  data_source_names = ["postgresql://monitor:<password>@db_postgres:5432/app?sslmode=disable"]
+}
+
+prometheus.exporter.redis "redis" {
+  redis_addr = "db_redis:6379"
+}
+```
+
+### One collector for metrics, one per node for logs
+
+The obvious move is to run Alloy in `mode: global` so it lands on both nodes. That would have run the full config twice and **written every series twice**. Instead there are two configs:
+
+- The main Alloy is pinned to the data node and owns every scrape.
+- A second Alloy on the app node contains **no `prometheus.*` components at all**. It only tails Docker logs and pushes them to Loki, with a 1 GB memory limit, because on an overcommitted node that cap is not optional.
+
+## Scraping each replica, not the load balancer
+
+The API runs as two replicas behind Swarm's virtual IP. Scraping the service name would hit whichever replica the VIP picks, so a slow or leaking replica would hide behind a healthy one. Swarm also publishes a `tasks.<service>` DNS name that returns **every task's IP**, and Alloy can discover from it:
+
+```alloy title="alloy/config.alloy"
+discovery.dns "api_tasks" {
+  names = ["tasks.app_api"]
+  type  = "A"
+  port  = 9080
+}
+
+prometheus.relabel "api_labels" {
+  forward_to = [prometheus.remote_write.prometheus.receiver]
+  // Order matters: capture the task IP as `replica` before `instance` is rewritten.
+  rule {
+    source_labels = ["instance"]
+    regex         = "([^:]+)(?::.*)?"
+    target_label  = "replica"
+    replacement   = "$1"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = "api"
+  }
+}
+
+prometheus.scrape "api" {
+  targets         = discovery.dns.api_tasks.targets
+  metrics_path    = "/api/metrics"
+  scrape_interval = "15s"
+  forward_to      = [prometheus.relabel.api_labels.receiver]
+}
+```
+
+<Callout kind="warning" title="Relabel after scrape sees no discovery labels">
+  A `prometheus.relabel` component runs on samples *after* the scrape, when `__address__` and the other discovery labels are already gone. The first version derived `replica` from `__address__`, produced nothing, and every per-replica panel collapsed into one unnamed series. Derive it from `instance`, and do it before anything rewrites `instance`.
+</Callout>
+
+cAdvisor uses the same trick (`tasks.monitor_cadvisor`), and a relabel rule maps each container to the node it belongs to by matching the Swarm service name, so container metrics share the `instance` values the host dashboards already use.
+
+## A legacy database that needed better questions
+
+The SQL Server exporter ships with a sensible default query set. Two things about it were surprising.
+
+**`query_config` replaces the defaults; it doesn't extend them.** The custom file has to start with a verbatim copy of the default collector config, or every standard SQL Server panel goes silent. It's worth a comment telling future readers to re-diff it when Alloy is upgraded.
+
+**The defaults don't answer the question you ask during an incident:** *who is blocking whom?* After an incident where writes stalled for minutes behind a lock and nobody could tell which session held it, three metrics were added. They use `sys.sysprocesses` and the `sys.dm_tran_*` views, which exist even on very old SQL Server versions:
+
+```yaml title="alloy/mssql-queries.yaml"
+- metric_name: mssql_head_blocker
+  type: gauge
+  help: 'Session at the head of a blocking chain. stat=victims|seconds_since_last_batch|open_tran.'
+  key_labels: [spid, program_name, host_name, login_name, status]
+  value_label: stat
+  values: [victims, seconds_since_last_batch, open_tran]
+  query: |
+    SELECT CAST(h.spid AS varchar(10)) AS spid,
+           RTRIM(ISNULL(h.program_name, '')) AS program_name,
+           RTRIM(ISNULL(h.hostname, '')) AS host_name,
+           RTRIM(ISNULL(h.loginame, '')) AS login_name,
+           RTRIM(h.status) AS status,
+           v.victims,
+           DATEDIFF(second, h.last_batch, GETDATE()) AS seconds_since_last_batch,
+           h.open_tran
+    FROM sys.sysprocesses h WITH (NOLOCK)
+    JOIN (SELECT blocked, COUNT(DISTINCT spid) AS victims
+          FROM sys.sysprocesses WITH (NOLOCK)
+          WHERE blocked <> 0 AND blocked <> spid
+          GROUP BY blocked) v ON v.blocked = h.spid
+    WHERE h.blocked = 0 AND h.ecid = 0
+```
+
+Alongside it: the number of blocked sessions with their longest wait, and the age of the oldest open user transaction per program and host. That last one is what catches a client that opened a transaction and wandered off.
+
+This target scrapes every **15 seconds** instead of the default 60. The API gives up on a lock after 10 seconds, so a 60-second scrape would almost never catch a blocking chain while it existed. The queries only read system views, so the faster interval is cheap.
+
+## The `$__rate_interval` trap
+
+After the switch to Alloy, half the dashboards showed flat zeros. The cause was one missing field on the Prometheus data source:
+
+```yaml title="grafana/datasources.yml"
+- name: Prometheus
+  type: prometheus
+  uid: prometheus # pinned: dashboards and alert rules reference it
+  url: http://monitor_prometheus:9090
+  jsonData:
+    timeInterval: 60s # [!code highlight]
+```
+
+Grafana computes `$__rate_interval` as `max($__interval + scrape interval, 4 × scrape interval)`, and it learns the scrape interval from `timeInterval`. Without it, Grafana assumes 15 seconds, so the window can be 60 seconds. Most Alloy targets scrape every 60 seconds, so a 60-second window holds **a single sample**, and `rate()` needs two. Every `rate()` panel returned nothing.
+
+`timeInterval` has to match the **slowest** scrape interval in the system. The 15-second targets come out a little smoother, which is harmless; the 60-second ones stop breaking.
+
+## Logs with flat cardinality
+
+Both Alloys discover containers through the Docker socket, keep only the stacks they care about, and label each stream with its service, stack, Swarm task and node:
+
+```alloy title="alloy/logs-app.alloy"
+discovery.relabel "app_logs" {
+  targets = discovery.docker.app.targets
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_swarm_service_name"]
+    regex         = "app_.*"
+    action        = "keep"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_swarm_task_name"]
+    target_label  = "task" // tells the two API replicas apart
+  }
+}
+
+loki.process "api_json" {
+  forward_to = [loki.write.loki.receiver]
+  stage.match {
+    selector = "{service_name=\"app_api\"}"
+    stage.json {
+      expressions = { level = "level", ts = "\"@timestamp\"" }
+    }
+    stage.labels { values = { level = "level" } } // [!code highlight]
+    stage.timestamp {
+      source = "ts"
+      format = "RFC3339Nano"
+    }
+  }
+}
+```
+
+The API logs JSON. Only `level` becomes a Loki label: it has three values and it's the one field worth filtering on before a line is even parsed. Logger name, thread, request id and stack trace stay inside the line and are reachable with `| json` at query time. In Loki, every distinct label combination is a separate stream, so promoting high-cardinality fields is the fastest way to make it slow. The pipeline also uses the application's own timestamp instead of Docker's ingest time.
+
+## Dashboards that can't drift
+
+Dashboards used to live only in Grafana's database, with exports in the repo that quietly fell out of date. Now the repo is the only source of truth:
+
+```yaml title="grafana/dashboards.yml"
+providers:
+  - name: dashboards
+    type: file
+    disableDeletion: false # deleting a JSON file deletes the dashboard
+    allowUiUpdates: false # read-only in the UI; changes revert on the next sync
+    updateIntervalSeconds: 60
+    options:
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: true # each subdirectory becomes a folder
+```
+
+To change a dashboard you edit the JSON in git and copy it to the server; Grafana picks it up within a minute, no restart. To experiment, you duplicate the dashboard in the UI under a new UID, play, export it, and commit the result.
+
+Two details matter more than they look:
+
+- **Mount the JSON outside `provisioning/dashboards/`.** Grafana scans that directory for provider YAML, and a tree of dashboard JSON parked inside it is a reliable way to confuse the loader.
+- **File provisioning only understands the classic dashboard schema** (`panels` plus `schemaVersion`). A dashboard exported in the newer v2 schema loads as an empty dashboard, with no error.
+
+The dashboards themselves follow a simple hierarchy. One **overview** shows the health of the whole stack on a single screen: gauges for each node, replica count, 5xx rate, scrape targets down, container restarts and days until the fullest disk fills. A **per-host** dashboard goes deep on one machine. Then there's **one dashboard per service**: for the API that means HTTP by status and endpoint, JVM heap and GC, threads, connection pools, scheduled tasks and its logs.
+
+## Alerts that people keep reading
+
+Alert rules are provisioned the same way. A few rules of thumb shaped them.
+
+**Thresholds come in pairs.** Warnings fire slower; critical alerts fire faster and repeat more often until someone acts:
+
+| Signal | Warning | Critical |
+| --- | --- | --- |
+| CPU | > 85% for 10 min | > 95% for 5 min |
+| Memory used | > 90% for 10 min | > 96% for 5 min |
+| Free disk on `/` | < 15% for 15 min | < 8% for 5 min |
+| Disk fills within 24 h (`predict_linear` over 6 h) | for 30 min | |
+| API replicas up | | < 2 for 5 min |
+| API 5xx rate | | > 1% for 10 min |
+| Container OOM kill | | any, immediately |
+
+**Alert on rates when the level is misleading.** The app node idles with about 500 MB of swap in use, so "swap used" would fire forever. The alert watches the **paging rate** (pages swapped in and out per second) instead, with a separate, much higher threshold on swap occupancy for real pressure.
+
+**Choose what "no data" means per rule.** If node_exporter stops answering, that's an emergency: the host-down rule sets `noDataState: Alerting`, because every other alert for that host just went blind. The p95 latency rule does the opposite. With no traffic at night, `histogram_quantile` returns NaN; treating that as "no data" sent a notification every night. No users is not a latency problem, so that rule sets `noDataState: OK`.
+
+```yaml title="grafana/alerting.yml"
+- uid: host-swapping
+  title: HostSwapping
+  condition: B
+  data:
+    - refId: A
+      datasourceUid: prometheus
+      model:
+        expr: rate(node_vmstat_pswpin{job="node_exporter"}[5m]) + rate(node_vmstat_pswpout{job="node_exporter"}[5m])
+        instant: true
+    - refId: B
+      datasourceUid: __expr__
+      model:
+        type: threshold
+        expression: A
+        conditions:
+          - evaluator: { type: gt, params: [100] }
+  for: 10m
+  labels: { severity: warning }
+  annotations:
+    summary: 'Active paging on {{ $labels.instance }}'
+```
+
+**Set latency alerts from what production does, not from the target.** The performance target for the API is a 2-second p95. Measured over real working days, p95 lived between 2 and 9 seconds. An alert at 2 seconds would fire all day, and an alert that fires all day stops being read. The rule fires at 15 seconds sustained for 10 minutes, which is genuine degradation, while the 2-second target stays a goal on the dashboard.
+
+**Pair related signals in the description.** "Heap over 85%" on its own is ambiguous. The description tells the reader to check the GC-time panel next to it: high heap plus high GC time means the replica is about to start thrashing.
+
+**Removed rules need `deleteRules`.** Provisioning doesn't delete a rule that simply disappears from the file, so retired rules are listed by UID.
+
+### Routing and secrets
+
+Notifications group by alert name, instance and severity. Warnings wait 30 seconds and repeat every 4 hours; critical alerts wait 10 seconds and repeat hourly. Email goes out through an SMTP relay, and a chat-channel webhook is provisioned as a second contact point. One detail that bites: a notification policy routes to a **single** contact point, so sending to email and chat at once means putting both integrations inside one contact point, not adding a second route.
+
+Neither credential is in git. Grafana reads any `GF_<SECTION>_<KEY>__FILE` variable from a file, so the SMTP user and password come from Docker secrets:
+
+```yaml title="monitoring-compose.yml"
+grafana:
+  image: grafana/grafana:13.2.3 # pinned on purpose
+  environment:
+    - GF_SMTP_ENABLED=true
+    - GF_SMTP_USER__FILE=/run/secrets/grafana_smtp_user
+    - GF_SMTP_PASSWORD__FILE=/run/secrets/grafana_smtp_password
+  secrets: [grafana_smtp_user, grafana_smtp_password, chat_webhook_url]
+```
+
+The webhook URL is read inside the alerting provisioning file with `url: $__file{/run/secrets/chat_webhook_url}`, so it never touches the environment either.
+
+<Callout kind="tip" title="printf, not echo, for secrets">
+  Create secrets with `printf '%s' '…' | docker secret create name -`. `echo` appends a newline that becomes part of the credential, and the resulting authentication failure is miserable to debug. Swarm secrets are also immutable: rotating one means removing and recreating it.
+</Callout>
+
+## Delivery metrics next to system metrics
+
+The last dashboard isn't about servers at all. Pipeline activity (deployments per environment, rollbacks, commits and when they reached production, incidents) is collected into a `dora` schema in PostgreSQL. Grafana reads it through a PostgreSQL data source with a dedicated read-only role, limited to three connections on the server and two in Grafana, so a heavy dashboard can never compete with the application.
+
+The headline panel scores the four DORA metrics against the published benchmarks, directly in SQL:
+
+```sql title="dora-level.sql"
+WITH win AS (
+  SELECT greatest(extract(epoch FROM ($__timeTo()::timestamptz - $__timeFrom()::timestamptz)) / 86400.0, 1) AS days
+), deploys AS (
+  SELECT count(*)::numeric AS n
+  FROM dora.v_deployment
+  WHERE environment = 'prod' AND NOT is_redeploy AND $__timeFilter(deployed_at)
+), lead AS (
+  SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY total_hours) AS h
+  FROM dora.lead_time
+  WHERE $__timeFilter(deployed_at)
+)
+SELECT 'Deployment frequency' AS metric,
+       round(deploys.n / win.days * 7, 1) || ' per week' AS value,
+       CASE WHEN deploys.n / win.days >= 1        THEN 'Elite'
+            WHEN deploys.n / win.days >= 1 / 7.0  THEN 'High'
+            WHEN deploys.n / win.days >= 1 / 30.0 THEN 'Medium'
+            ELSE 'Low' END AS level
+FROM deploys, win
+UNION ALL
+SELECT 'Lead time for changes (p50)',
+       round(lead.h::numeric, 1) || ' h',
+       CASE WHEN lead.h < 24  THEN 'Elite'
+            WHEN lead.h < 168 THEN 'High'
+            WHEN lead.h < 730 THEN 'Medium'
+            ELSE 'Low' END
+FROM lead;
+```
+
+The more useful panels sit under it. Lead time is split into the rungs of the promotion ladder, one segment per environment on the way to production, so the dashboard shows *where* changes wait, not just how long. Change failure rate counts a deploy as failed when it was rolled back or blamed for a tagged incident, and incidents with no deploy behind them get their own count.
+
+## Gotchas worth writing down
+
+- **Pin Grafana.** An unpinned `latest` upgraded itself to a new major version on a routine restart, and the bundled PostgreSQL plugin stopped reading the data source's top-level `database` field. It now has to live under `jsonData`.
+- **Pin data source UIDs.** Dashboards and alert rules reference data sources by UID. An auto-generated UID changes when Grafana is rebuilt, and every panel breaks at once.
+- **Address services by their Swarm names** (`<stack>_<service>`) on a shared overlay network, and use `tasks.<stack>_<service>` when you need every replica.
+- **Mount the host read-only into the collector** (`/proc`, `/sys`, `/`, the Docker socket) so host metrics and container discovery work from inside a container.
+
+## What I'd change next
+
+- **One scrape interval.** Moving every target to 15 seconds would let `timeInterval` drop to match and make short incidents visible everywhere, not just on the targets that were tuned.
+- **Every credential through secrets.** The Grafana and alerting credentials already are; exporter connection strings should follow the same pattern.
+- **Deploy the monitoring stack from the pipeline.** It's still copied to the server and deployed by hand from a Swarm manager, which is exactly the kind of step the DORA dashboard would flag in any other service.
+- **Plan for retention.** Fifteen days of local Prometheus storage is fine for operations; capacity planning and year-over-year questions will eventually want long-term storage behind remote write.

@@ -14,7 +14,8 @@ export function CountUp({ value, className }: { value: string; className?: strin
   const target = match ? Number(match[1]) : 0
   const suffix = match ? match[2] : value
   const ref = useRef<HTMLSpanElement>(null)
-  const inView = useInView(ref, { once: true, margin: '-15% 0px' })
+  // Any visibility counts: a margin here left numbers near the top of the screen stuck at 0.
+  const inView = useInView(ref, { once: true })
   const reduceMotion = useReducedMotion()
   const [current, setCurrent] = useState(0)
   const shown = reduceMotion ? target : current
@@ -34,7 +35,7 @@ export function CountUp({ value, className }: { value: string; className?: strin
 
   return (
     <span ref={ref} className={className}>
-      <span aria-hidden="true" className="tabular-nums">
+      <span aria-hidden="true" data-count-up className="tabular-nums">
         {hasNumber ? shown : ''}
         {suffix}
       </span>

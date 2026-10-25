@@ -38,7 +38,7 @@ type PostCardProps = {
 export function PostCard({ post, headingLevel = 'h3', featured = false }: PostCardProps) {
   const Heading = headingLevel
   return (
-    <Card className="group relative h-full interactive-card hover:ring-brand/50 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring">
+    <Card className="group spotlight h-full interactive-card rounded-2xl hover:ring-brand/40 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring">
       <CardContent className={cn('flex h-full flex-col gap-3', featured && 'gap-4 sm:p-2')}>
         <div className="flex items-center justify-between gap-3">
           <PostMetaLine post={post} />

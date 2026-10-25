@@ -55,12 +55,12 @@ test('hero entrance and impact numbers settle on their final values', async ({ p
   await page.goto('/')
   const hero = page.getByRole('heading', { level: 1 })
   await expect(hero).toHaveCSS('opacity', '1')
-  await page.getByRole('heading', { name: "A few numbers I'm proud of" }).scrollIntoViewIfNeeded()
-  const impact = page.locator('ul').filter({ hasText: 'faster business-critical queries' })
-  await expect(impact.locator('[aria-hidden="true"]').first()).toHaveText('40×')
+  const numbers = page.locator('[data-count-up]')
+  await numbers.first().scrollIntoViewIfNeeded()
+  await expect(numbers.first()).toHaveText('40×')
   // Each number counts up when it scrolls into view; on phones the last tile starts below the fold.
-  await impact.locator('li').last().scrollIntoViewIfNeeded()
-  await expect(impact.locator('[aria-hidden="true"]').last()).toHaveText('12M')
+  await numbers.last().scrollIntoViewIfNeeded()
+  await expect(numbers.last()).toHaveText('12M')
 })
 
 test('reduced motion shows final states immediately', async ({ browser }) => {
@@ -68,8 +68,7 @@ test('reduced motion shows final states immediately', async ({ browser }) => {
   const page = await context.newPage()
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 1 })).toHaveCSS('opacity', '1', { timeout: 100 })
-  const impact = page.locator('ul').filter({ hasText: 'faster business-critical queries' })
-  await expect(impact.locator('[aria-hidden="true"]').first()).toHaveText('40×', { timeout: 100 })
+  await expect(page.locator('[data-count-up]').first()).toHaveText('40×', { timeout: 100 })
   await context.close()
 })
 
@@ -83,9 +82,9 @@ test('phones show the top tags and expand the rest on demand', async ({ page, is
     return
   }
 
-  // "All" plus the six top tags, which cover every post's lead tag.
+  // "All" plus the six top tags, which include every post's lead tag.
   await expect(tags.filter({ visible: true })).toHaveCount(7)
-  for (const lead of ['postgresql', 'deployment', 'prometheus', 'azure']) {
+  for (const lead of ['postgresql', 'observability', 'deployment', 'azure', 'prometheus']) {
     await expect(page.getByRole('link', { name: `Posts tagged ${lead}`, exact: true })).toBeVisible()
   }
   await expect(toggle).toHaveAttribute('aria-expanded', 'false')
@@ -111,6 +110,5 @@ test('the first post title fits on the first screen of an iPhone-sized phone', a
   const title = await page.getByRole('main').getByRole('heading', { level: 2 }).first().boundingBox()
   expect(title).not.toBeNull()
   expect(title!.y + title!.height).toBeLessThanOrEqual(659)
-  await expect(page.getByRole('main').getByRole('link', { name: 'RSS feed' })).toBeVisible()
   await context.close()
 })

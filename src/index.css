@@ -273,3 +273,94 @@
 .heading-anchor:hover {
   color: var(--brand);
 }
+
+/*
+ * Modern refresh: an aurora glow and dot grid behind the top of every page,
+ * and a cursor-following "spotlight" on cards. Both are decorative, sit behind
+ * content, and keep text contrast untouched.
+ */
+.aurora {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 720px;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background-image: radial-gradient(
+    color-mix(in oklab, var(--foreground) 10%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+  mask-image: linear-gradient(to bottom, black 20%, transparent 85%);
+}
+.aurora::before,
+.aurora::after {
+  content: '';
+  position: absolute;
+  /* Soft edges come from the gradient itself; a blur() filter here is expensive to repaint. */
+  animation: aurora-drift 16s ease-in-out infinite alternate;
+  will-change: transform;
+}
+.aurora::before {
+  width: 900px;
+  height: 700px;
+  left: 40%;
+  top: -360px;
+  background: radial-gradient(closest-side, var(--brand), transparent);
+  opacity: 0.16;
+}
+.aurora::after {
+  width: 760px;
+  height: 620px;
+  left: -6%;
+  top: -380px;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklab, var(--brand) 55%, var(--signal)),
+    transparent
+  );
+  opacity: 0.1;
+  animation-delay: -8s;
+}
+.dark .aurora::before {
+  opacity: 0.28;
+}
+.dark .aurora::after {
+  opacity: 0.16;
+}
+@keyframes aurora-drift {
+  to {
+    transform: translate3d(-40px, 30px, 0) scale(1.08);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aurora::before,
+  .aurora::after {
+    animation: none;
+  }
+}
+
+/* Spotlight: --spot-x / --spot-y are set by a single pointer listener in site-layout.tsx. */
+.spotlight {
+  position: relative;
+  isolation: isolate;
+}
+.spotlight::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(
+    360px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+    color-mix(in oklab, var(--brand) 12%, transparent),
+    transparent 45%
+  );
+  opacity: 0;
+  transition: opacity var(--dur-enter) var(--ease-enter);
+  pointer-events: none;
+}
+.spotlight:hover::before {
+  opacity: 1;
+}

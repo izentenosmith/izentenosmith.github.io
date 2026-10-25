@@ -51,7 +51,7 @@ export function PostPage() {
       <m.div
         aria-hidden="true"
         style={{ scaleX: progress }}
-        className="fixed inset-x-0 top-14 z-30 h-0.5 origin-left bg-brand"
+        className="fixed inset-x-0 top-0 z-50 h-0.5 origin-left bg-brand"
       />
       <article>
         <header className="max-w-3xl space-y-5">

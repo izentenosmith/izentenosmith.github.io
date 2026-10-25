@@ -1,4 +1,4 @@
-import { ChevronDown, Rss } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { useId, useState, type CSSProperties } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { PostCard } from '@/components/blog/post-card'
@@ -11,16 +11,16 @@ import { cn } from '@/lib/utils'
 const tagCounts = new Map<string, number>()
 for (const tag of posts.flatMap((post) => post.tags)) tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1)
 
-// Most-used tags first; ties go to each post's lead tag (in post order), so the
-// short list on phones still reaches every post. Then alphabetical.
-const leadTags = posts.map((post) => post.tags[0])
-const leadRank = (tag: string) => (leadTags.includes(tag) ? leadTags.indexOf(tag) : leadTags.length)
-const allTags = [...tagCounts.keys()].sort(
-  (a, b) => tagCounts.get(b)! - tagCounts.get(a)! || leadRank(a) - leadRank(b) || a.localeCompare(b),
-)
+// Each post's lead tag comes first (in post order), so the short list on phones
+// always reaches every post; then the most-used remaining tags, then alphabetical.
+const leadTags = [...new Set(posts.map((post) => post.tags[0]))]
+const otherTags = [...tagCounts.keys()]
+  .filter((tag) => !leadTags.includes(tag))
+  .sort((a, b) => tagCounts.get(b)! - tagCounts.get(a)! || a.localeCompare(b))
+const allTags = [...leadTags, ...otherTags]
 
 /** Phones show this many tags until "More tags" is pressed; wider screens show all. */
-const PHONE_TAG_LIMIT = 6
+const PHONE_TAG_LIMIT = Math.max(6, leadTags.length)
 const hiddenOnPhones = Math.max(0, allTags.length - PHONE_TAG_LIMIT)
 
 export function BlogPage() {
@@ -35,19 +35,11 @@ export function BlogPage() {
   const tagListId = useId()
 
   return (
-    // Phones get tighter spacing and an icon-only RSS button beside the title,
-    // so the first post's title fits on the first screen.
+    // Phones get tighter spacing so the first post's title fits on the first screen.
     <div className="space-y-8 sm:space-y-12">
       <header className="flex flex-wrap items-end justify-between gap-6">
         <div className="w-full max-w-2xl space-y-3 sm:w-auto sm:space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <h1 className="animate-enter font-heading text-h1 font-semibold sm:text-display">Blog</h1>
-            <Button variant="outline" size="icon" className="size-11 sm:hidden" asChild>
-              <a href="/rss.xml" aria-label="RSS feed">
-                <Rss className="size-4" />
-              </a>
-            </Button>
-          </div>
+          <h1 className="animate-enter font-heading text-h1 font-semibold sm:text-display">Blog</h1>
           <p
             className="animate-enter text-base text-pretty text-muted-foreground sm:text-lg"
             style={{ '--enter-index': 1 } as CSSProperties}
@@ -56,12 +48,6 @@ export function BlogPage() {
             and the trade-offs I'd revisit.
           </p>
         </div>
-        <Button variant="outline" className="hidden h-11 sm:inline-flex" asChild>
-          <a href="/rss.xml">
-            <Rss data-icon="inline-start" />
-            RSS feed
-          </a>
-        </Button>
       </header>
 
       <nav aria-label="Filter posts by tag" className="space-y-1 sm:space-y-3">
