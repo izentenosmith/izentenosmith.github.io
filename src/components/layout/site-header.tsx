@@ -30,7 +30,11 @@ export function SiteHeader() {
   return (
     <header className="site-header sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-1 px-4 sm:px-6">
-        <Link to="/" viewTransition className="mr-auto flex items-center gap-2.5 rounded-md font-heading font-semibold">
+        <Link
+          to="/"
+          viewTransition
+          className="mr-auto flex items-center gap-2.5 rounded-md font-heading font-semibold"
+        >
           <IzsBadge />
           <span className="hidden sm:inline">{profile.name}</span>
           <span className="sr-only sm:hidden">{profile.name}</span>
@@ -60,7 +64,9 @@ export function SiteHeader() {
                     />
                   )}
                   {label}
-                  {isActive && <span className="absolute inset-x-3 -bottom-[9px] h-0.5 rounded-full bg-brand" />}
+                  {isActive && (
+                    <span className="absolute inset-x-3 -bottom-[9px] h-0.5 rounded-full bg-brand" />
+                  )}
                 </>
               )}
             </NavLink>

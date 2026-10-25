@@ -1,7 +1,11 @@
 import path from 'node:path'
 import mdx from '@mdx-js/rollup'
 import rehypeShiki from '@shikijs/rehype'
-import { transformerMetaHighlight, transformerNotationDiff, transformerNotationHighlight } from '@shikijs/transformers'
+import {
+  transformerMetaHighlight,
+  transformerNotationDiff,
+  transformerNotationHighlight,
+} from '@shikijs/transformers'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import rehypeAutolinkHeadings from 'rehype-autolink-headings'

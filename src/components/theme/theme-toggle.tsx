@@ -39,7 +39,11 @@ function switchWithReveal(apply: () => void, origin: HTMLElement | null) {
     .then(() => {
       root.animate(
         { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
-        { duration: 500, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', pseudoElement: '::view-transition-new(root)' },
+        {
+          duration: 500,
+          easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+          pseudoElement: '::view-transition-new(root)',
+        },
       )
     })
     .catch(() => {})
@@ -53,7 +57,13 @@ export function ThemeToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button ref={triggerRef} variant="ghost" size="icon" className="size-11 sm:size-9" aria-label="Change theme">
+        <Button
+          ref={triggerRef}
+          variant="ghost"
+          size="icon"
+          className="size-11 sm:size-9"
+          aria-label="Change theme"
+        >
           <Sun className="size-4 scale-100 rotate-0 transition-transform duration-(--dur-enter) dark:scale-0 dark:-rotate-90" />
           <Moon className="absolute size-4 scale-0 rotate-90 transition-transform duration-(--dur-enter) dark:scale-100 dark:rotate-0" />
         </Button>

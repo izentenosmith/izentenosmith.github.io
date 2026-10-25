@@ -18,9 +18,12 @@ export function ExperiencePage() {
     <div className="space-y-24">
       <header className="max-w-3xl space-y-4">
         <h1 className="animate-enter font-heading text-h1 font-semibold sm:text-display">Experience</h1>
-        <p className="animate-enter text-lg text-pretty text-muted-foreground" style={{ '--enter-index': 1 } as CSSProperties}>
-          Ten years across backend, data, cloud and DevOps — most recently leading a team through a legacy
-          ERP modernization and designing cloud platforms for clients.
+        <p
+          className="animate-enter text-lg text-pretty text-muted-foreground"
+          style={{ '--enter-index': 1 } as CSSProperties}
+        >
+          Ten years across backend, data, cloud and DevOps — most recently leading a team through a legacy ERP
+          modernization and designing cloud platforms for clients.
         </p>
       </header>
 
@@ -193,7 +196,9 @@ function MoreGroups({ groups }: { groups: Role['groups'] }) {
         aria-controls={id}
         onClick={() => setOpen((value) => !value)}
       >
-        {open ? 'Show less' : `Show ${groups.length} more: ${groups.map((group) => group.heading).join(', ')}`}
+        {open
+          ? 'Show less'
+          : `Show ${groups.length} more: ${groups.map((group) => group.heading).join(', ')}`}
         <ChevronDown
           data-icon="inline-end"
           className={cn('transition-transform duration-(--dur-hover)', open && 'rotate-180')}
@@ -206,7 +211,9 @@ function MoreGroups({ groups }: { groups: Role['groups'] }) {
 function BulletGroup({ heading, bullets }: { heading?: string; bullets: string[] }) {
   return (
     <div className="space-y-3">
-      {heading && <h4 className="font-mono text-xs tracking-wider text-muted-foreground uppercase">{heading}</h4>}
+      {heading && (
+        <h4 className="font-mono text-xs tracking-wider text-muted-foreground uppercase">{heading}</h4>
+      )}
       <ul className="space-y-3">
         {bullets.map((bullet) => (
           <li
@@ -221,7 +228,15 @@ function BulletGroup({ heading, bullets }: { heading?: string; bullets: string[]
   )
 }
 
-function InfoCard({ icon: Icon, title, children }: { icon: typeof Award; title: string; children: ReactNode }) {
+function InfoCard({
+  icon: Icon,
+  title,
+  children,
+}: {
+  icon: typeof Award
+  title: string
+  children: ReactNode
+}) {
   return (
     <div className="h-full space-y-3 rounded-xl border bg-card p-5">
       <div className="flex items-center gap-3">

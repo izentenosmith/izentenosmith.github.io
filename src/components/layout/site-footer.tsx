@@ -22,7 +22,11 @@ export function SiteFooter() {
           <IzsBadge />
           <p className="text-sm text-muted-foreground">
             © {year} {profile.name} ·{' '}
-            <Link to="/contact" viewTransition className="underline-offset-4 hover:text-foreground hover:underline">
+            <Link
+              to="/contact"
+              viewTransition
+              className="underline-offset-4 hover:text-foreground hover:underline"
+            >
               Get in touch
             </Link>
           </p>
@@ -33,7 +37,12 @@ export function SiteFooter() {
             return (
               <li key={label}>
                 <Button variant="ghost" size="icon" className="size-11 sm:size-9" asChild>
-                  <a href={href} aria-label={label} target={external ? '_blank' : undefined} rel={external ? 'noreferrer' : undefined}>
+                  <a
+                    href={href}
+                    aria-label={label}
+                    target={external ? '_blank' : undefined}
+                    rel={external ? 'noreferrer' : undefined}
+                  >
                     <Icon className="size-4" />
                   </a>
                 </Button>

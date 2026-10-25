@@ -51,7 +51,9 @@ function extractMeta(slug: string, source: string): PostMeta {
 
   const parsed = frontmatterSchema.safeParse(frontmatter)
   if (!parsed.success) {
-    const problems = parsed.error.issues.map((issue) => `  ${issue.path.join('.') || 'frontmatter'}: ${issue.message}`)
+    const problems = parsed.error.issues.map(
+      (issue) => `  ${issue.path.join('.') || 'frontmatter'}: ${issue.message}`,
+    )
     throw new Error(`Invalid frontmatter in post "${slug}":\n${problems.join('\n')}`)
   }
 
@@ -75,7 +77,9 @@ export async function readPosts(postsDir: string, onFile?: (path: string) => voi
   )
   return posts.sort(
     (a, b) =>
-      b.date.localeCompare(a.date) || Number(b.featured) - Number(a.featured) || a.title.localeCompare(b.title),
+      b.date.localeCompare(a.date) ||
+      Number(b.featured) - Number(a.featured) ||
+      a.title.localeCompare(b.title),
   )
 }
 

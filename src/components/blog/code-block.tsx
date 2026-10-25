@@ -22,7 +22,12 @@ type CodeBlockProps = ComponentProps<'pre'> & {
  * Replaces MDX's <pre>: a header with the file name (from ```lang title="…")
  * or the language, and a copy button. Highlighting comes from Shiki.
  */
-export function CodeBlock({ 'data-title': title, 'data-language': language, className, ...props }: CodeBlockProps) {
+export function CodeBlock({
+  'data-title': title,
+  'data-language': language,
+  className,
+  ...props
+}: CodeBlockProps) {
   const preRef = useRef<HTMLPreElement>(null)
   const label = title ?? (language ? (languageNames[language] ?? language) : undefined)
 

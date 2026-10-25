@@ -51,10 +51,26 @@ export function Diagram({ width, height, title, caption, children }: DiagramProp
           viewport={{ once: true, amount: 0.4 }}
         >
           <defs>
-            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <marker
+              id="arrow"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
               <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />
             </marker>
-            <marker id="arrow-brand" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <marker
+              id="arrow-brand"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
               <path d="M0,0 L10,5 L0,10 z" className="fill-brand" />
             </marker>
           </defs>
@@ -62,7 +78,9 @@ export function Diagram({ width, height, title, caption, children }: DiagramProp
         </m.svg>
       </div>
       {caption && (
-        <figcaption className="mt-3 text-center text-sm text-pretty text-muted-foreground">{caption}</figcaption>
+        <figcaption className="mt-3 text-center text-sm text-pretty text-muted-foreground">
+          {caption}
+        </figcaption>
       )}
     </figure>
   )
@@ -102,7 +120,12 @@ export function Node({ x, y, w, h, label, sub, tone = 'default', mono }: NodePro
         {label}
       </text>
       {sub && (
-        <text x={cx} y={cy + 13} textAnchor="middle" className="fill-muted-foreground font-mono text-[10.5px]">
+        <text
+          x={cx}
+          y={cy + 13}
+          textAnchor="middle"
+          className="fill-muted-foreground font-mono text-[10.5px]"
+        >
           {sub}
         </text>
       )}
@@ -124,7 +147,11 @@ export function Group({ x, y, w, h, label, tone = 'default' }: GroupProps) {
         strokeDasharray="5 4"
         className={cn('fill-none stroke-[1.25]', tone === 'brand' ? 'stroke-brand/60' : 'stroke-border')}
       />
-      <text x={x + 12} y={y + 20} className="fill-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+      <text
+        x={x + 12}
+        y={y + 20}
+        className="fill-muted-foreground font-mono text-[11px] tracking-wider uppercase"
+      >
         {label}
       </text>
     </g>

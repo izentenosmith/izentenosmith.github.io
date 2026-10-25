@@ -11,7 +11,17 @@ export type Role = {
 export const roles: Role[] = [
   {
     company: 'Neolab',
-    tags: ['Azure', 'Container Apps', 'SQL Server', 'Grafana', 'Prometheus', 'Loki', 'Alloy', 'k6', 'Claude Code'],
+    tags: [
+      'Azure',
+      'Container Apps',
+      'SQL Server',
+      'Grafana',
+      'Prometheus',
+      'Loki',
+      'Alloy',
+      'k6',
+      'Claude Code',
+    ],
     location: 'Santiago, Chile',
     period: '2025 — Present',
     title: 'Tech Lead',

@@ -57,8 +57,14 @@ async function icons() {
   await writeFile(path.join(publicDir, 'icon-192.png'), render(markSvg(64), 192))
   await writeFile(path.join(publicDir, 'icon-512.png'), render(markSvg(64), 512))
   // Square, no transparency: iOS and Android apply their own masks.
-  await writeFile(path.join(publicDir, 'apple-touch-icon.png'), render(markSvg(64, { radius: 0, inset: 6 }), 180))
-  await writeFile(path.join(publicDir, 'icon-maskable-512.png'), render(markSvg(64, { radius: 0, inset: 10 }), 512))
+  await writeFile(
+    path.join(publicDir, 'apple-touch-icon.png'),
+    render(markSvg(64, { radius: 0, inset: 6 }), 180),
+  )
+  await writeFile(
+    path.join(publicDir, 'icon-maskable-512.png'),
+    render(markSvg(64, { radius: 0, inset: 10 }), 512),
+  )
 
   const manifest = {
     name: profile.name,
@@ -127,4 +133,6 @@ async function previewImage() {
 
 await icons()
 await previewImage()
-console.log('wrote favicon.svg, favicon-32.png, icon-192/512, apple-touch-icon, maskable icon, site.webmanifest, og.png')
+console.log(
+  'wrote favicon.svg, favicon-32.png, icon-192/512, apple-touch-icon, maskable icon, site.webmanifest, og.png',
+)

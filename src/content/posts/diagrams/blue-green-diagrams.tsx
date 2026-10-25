@@ -10,7 +10,16 @@ export function BlueGreenDiagram() {
     >
       <Node x={20} y={152} w={100} h={46} label="Users" sub="HTTPS" />
       <Node x={175} y={140} w={170} h={70} label="Nginx" sub="TLS · reverse proxy" tone="brand" />
-      <Node x={175} y={262} w={170} h={50} label="active-upstream.conf" sub="symlink → blue" mono tone="muted" />
+      <Node
+        x={175}
+        y={262}
+        w={170}
+        h={50}
+        label="active-upstream.conf"
+        sub="symlink → blue"
+        mono
+        tone="muted"
+      />
 
       <Group x={405} y={20} w={340} h={160} label="blue · active" tone="brand" />
       <Node x={425} y={52} w={145} h={46} label="frontend" sub=":5001" />

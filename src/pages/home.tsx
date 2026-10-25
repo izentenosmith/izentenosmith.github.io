@@ -27,7 +27,7 @@ export function HomePage() {
         <div className="space-y-6 lg:col-span-7">
           <p
             style={enter(0)}
-            className="animate-enter inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 font-mono text-xs text-muted-foreground"
+            className="inline-flex animate-enter items-center gap-2 rounded-full border bg-card px-3 py-1 font-mono text-xs text-muted-foreground"
           >
             <span aria-hidden="true" className="size-2 rounded-full bg-signal" />
             {profile.title}
@@ -35,16 +35,26 @@ export function HomePage() {
             <MapPin aria-hidden="true" className="size-3.5" />
             {profile.location}
           </p>
-          <h1 id="hero-title" style={enter(1)} className="animate-enter font-heading text-display font-semibold text-balance">
+          <h1
+            id="hero-title"
+            style={enter(1)}
+            className="animate-enter font-heading text-display font-semibold text-balance"
+          >
             {profile.name}
           </h1>
-          <p style={enter(2)} className="animate-enter max-w-2xl text-xl text-pretty text-foreground/90 sm:text-2xl sm:leading-snug">
+          <p
+            style={enter(2)}
+            className="max-w-2xl animate-enter text-xl text-pretty text-foreground/90 sm:text-2xl sm:leading-snug"
+          >
             {profile.tagline}
           </p>
-          <p style={enter(3)} className="animate-enter max-w-2xl text-reading text-pretty text-muted-foreground">
+          <p
+            style={enter(3)}
+            className="max-w-2xl animate-enter text-reading text-pretty text-muted-foreground"
+          >
             {profile.summary}
           </p>
-          <div style={enter(4)} className="animate-enter flex flex-wrap gap-3 pt-2">
+          <div style={enter(4)} className="flex animate-enter flex-wrap gap-3 pt-2">
             <Button size="lg" className="h-11 px-4" asChild>
               <Link to="/experience" viewTransition>
                 View experience
@@ -64,7 +74,10 @@ export function HomePage() {
           </div>
         </div>
 
-        <figure style={enter(2)} className="animate-enter relative mx-auto w-full max-w-sm lg:col-span-5 lg:max-w-none">
+        <figure
+          style={enter(2)}
+          className="relative mx-auto w-full max-w-sm animate-enter lg:col-span-5 lg:max-w-none"
+        >
           <div className="overflow-hidden rounded-2xl border bg-card">
             <Picture
               picture={images.portrait.picture}

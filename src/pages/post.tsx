@@ -64,7 +64,10 @@ export function PostPage() {
             All posts
           </Link>
           <PostMetaLine post={post} />
-          <h1 className="font-heading text-h1 font-semibold text-balance sm:text-[2.75rem] sm:leading-[1.1]" style={postTitleTransition(post.slug)}>
+          <h1
+            className="font-heading text-h1 font-semibold text-balance sm:text-[2.75rem] sm:leading-[1.1]"
+            style={postTitleTransition(post.slug)}
+          >
             {post.title}
           </h1>
           <p className="text-lg text-pretty text-muted-foreground sm:text-xl">{post.description}</p>
@@ -160,7 +163,7 @@ function PagerLink({ post, direction }: { post: PostMeta; direction: 'previous' 
     <Link
       to={`/blog/${post.slug}`}
       viewTransition
-      className="interactive-card group flex flex-col gap-1 rounded-xl border bg-card p-4 hover:border-brand/50 sm:data-[next=true]:text-right"
+      className="group flex interactive-card flex-col gap-1 rounded-xl border bg-card p-4 hover:border-brand/50 sm:data-[next=true]:text-right"
       data-next={isNext}
     >
       <span className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground sm:group-data-[next=true]:justify-end">

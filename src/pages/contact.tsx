@@ -62,7 +62,7 @@ export function ContactPage() {
             return (
               <li
                 key={label}
-                className="interactive-card group relative flex items-center gap-4 rounded-xl border bg-card p-4 hover:border-brand/50 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring"
+                className="group relative flex interactive-card items-center gap-4 rounded-xl border bg-card p-4 hover:border-brand/50 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring"
               >
                 <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-muted">
                   <Icon aria-hidden="true" className="size-5" />
@@ -78,7 +78,11 @@ export function ContactPage() {
                 </a>
                 {copy ? (
                   <span className="relative z-10">
-                    <CopyButton value={value} label="Copy email address" failedText="Couldn't copy, select the address instead" />
+                    <CopyButton
+                      value={value}
+                      label="Copy email address"
+                      failedText="Couldn't copy, select the address instead"
+                    />
                   </span>
                 ) : (
                   <ArrowUpRight
@@ -92,7 +96,10 @@ export function ContactPage() {
         </ul>
       </div>
 
-      <figure className="animate-enter mx-auto w-full max-w-sm lg:col-span-5 lg:max-w-none" style={{ '--enter-index': 2 } as CSSProperties}>
+      <figure
+        className="mx-auto w-full max-w-sm animate-enter lg:col-span-5 lg:max-w-none"
+        style={{ '--enter-index': 2 } as CSSProperties}
+      >
         <div className="overflow-hidden rounded-2xl border bg-card">
           <Picture
             picture={images.cartoon.picture}

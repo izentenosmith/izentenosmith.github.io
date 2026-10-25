@@ -8,7 +8,15 @@ const kinds = {
   warning: { icon: TriangleAlert, className: 'border-amber-500/40 bg-amber-500/5' },
 }
 
-export function Callout({ kind = 'note', title, children }: { kind?: keyof typeof kinds; title?: string; children: ReactNode }) {
+export function Callout({
+  kind = 'note',
+  title,
+  children,
+}: {
+  kind?: keyof typeof kinds
+  title?: string
+  children: ReactNode
+}) {
   const { icon: Icon, className } = kinds[kind]
   return (
     <aside className={cn('not-prose my-6 flex gap-3 rounded-xl border p-4 text-sm', className)}>
