@@ -84,6 +84,7 @@ function TagLink({ tag, active, label }: { tag: string | null; active: boolean; 
           : 'bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground',
       )}
     >
+      {tag && <span className="sr-only">Posts tagged </span>}
       {label}
     </Link>
   )

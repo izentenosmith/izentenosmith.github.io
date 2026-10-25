@@ -11,7 +11,7 @@ test('theme choice applies and survives a reload', async ({ page }) => {
 
 test('blog tag filter narrows the list and lives in the URL', async ({ page }) => {
   await page.goto('/blog')
-  await page.getByRole('link', { name: 'postgresql', exact: true }).first().click()
+  await page.getByRole('link', { name: 'Posts tagged postgresql', exact: true }).first().click()
   await expect(page).toHaveURL(/\?tag=postgresql$/)
   await expect(page.getByRole('main').getByRole('heading', { level: 2 })).toHaveCount(1)
   await page.getByRole('link', { name: /^All \(\d+\)$/ }).click()
@@ -49,4 +49,26 @@ test('mobile menu navigates and closes', async ({ page, isMobile }) => {
   await page.getByRole('dialog').getByRole('link', { name: 'Contact' }).click()
   await expect(page).toHaveURL(/\/contact$/)
   await expect(page.getByRole('dialog')).toBeHidden()
+})
+
+test('hero entrance and impact numbers settle on their final values', async ({ page }) => {
+  await page.goto('/')
+  const hero = page.getByRole('heading', { level: 1 })
+  await expect(hero).toHaveCSS('opacity', '1')
+  await page.getByRole('heading', { name: "A few numbers I'm proud of" }).scrollIntoViewIfNeeded()
+  const impact = page.locator('ul').filter({ hasText: 'faster business-critical queries' })
+  await expect(impact.locator('[aria-hidden="true"]').first()).toHaveText('40×')
+  // Each number counts up when it scrolls into view; on phones the last tile starts below the fold.
+  await impact.locator('li').last().scrollIntoViewIfNeeded()
+  await expect(impact.locator('[aria-hidden="true"]').last()).toHaveText('12M')
+})
+
+test('reduced motion shows final states immediately', async ({ browser }) => {
+  const context = await browser.newContext({ reducedMotion: 'reduce' })
+  const page = await context.newPage()
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveCSS('opacity', '1', { timeout: 100 })
+  const impact = page.locator('ul').filter({ hasText: 'faster business-critical queries' })
+  await expect(impact.locator('[aria-hidden="true"]').first()).toHaveText('40×', { timeout: 100 })
+  await context.close()
 })

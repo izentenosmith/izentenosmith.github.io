@@ -33,18 +33,6 @@ function withHead(html: string, page: PageMeta) {
   return html.slice(0, start) + renderHead(page) + html.slice(end + HEAD_END.length)
 }
 
-/**
- * Replaces the stylesheet <link> with the stylesheet itself. Every visit loads
- * exactly one HTML page (navigation after that is client-side), so inlining
- * removes the only render-blocking request without losing useful caching.
- */
-async function inlineStylesheet(html: string, outDir: string) {
-  const match = html.match(/<link rel="stylesheet"[^>]*href="(\/assets\/[^"]+\.css)"[^>]*>/)
-  if (!match) return html
-  const css = await readFile(path.join(outDir, match[1]), 'utf8')
-  return html.replace(match[0], () => `<style>${css}</style>`)
-}
-
 function rssFeed(posts: PostMeta[]) {
   const feed = new Feed({
     id: `${SITE_URL}/blog`,
@@ -89,7 +77,7 @@ export function routeHtmlPlugin(postsDir: string): Plugin {
     async closeBundle() {
       if (config.command !== 'build') return
       const outDir = path.resolve(config.root, config.build.outDir)
-      const template = await inlineStylesheet(await readFile(path.join(outDir, 'index.html'), 'utf8'), outDir)
+      const template = await readFile(path.join(outDir, 'index.html'), 'utf8')
       const posts = await readPosts(postsDir)
       const pages = [...staticPages, ...posts.map(postPageMeta)]
 
