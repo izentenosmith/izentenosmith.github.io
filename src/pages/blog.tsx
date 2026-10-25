@@ -35,19 +35,28 @@ export function BlogPage() {
   const tagListId = useId()
 
   return (
-    <div className="space-y-12">
+    // Phones get tighter spacing and an icon-only RSS button beside the title,
+    // so the first post's title fits on the first screen.
+    <div className="space-y-8 sm:space-y-12">
       <header className="flex flex-wrap items-end justify-between gap-6">
-        <div className="max-w-2xl space-y-4">
-          <h1 className="animate-enter font-heading text-h1 font-semibold sm:text-display">Blog</h1>
+        <div className="w-full max-w-2xl space-y-3 sm:w-auto sm:space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <h1 className="animate-enter font-heading text-h1 font-semibold sm:text-display">Blog</h1>
+            <Button variant="outline" size="icon" className="size-11 sm:hidden" asChild>
+              <a href="/rss.xml" aria-label="RSS feed">
+                <Rss className="size-4" />
+              </a>
+            </Button>
+          </div>
           <p
-            className="animate-enter text-lg text-pretty text-muted-foreground"
+            className="animate-enter text-base text-pretty text-muted-foreground sm:text-lg"
             style={{ '--enter-index': 1 } as CSSProperties}
           >
             Technical write-ups on systems I've designed and run: how they're modeled, deployed and observed,
             and the trade-offs I'd revisit.
           </p>
         </div>
-        <Button variant="outline" className="h-11" asChild>
+        <Button variant="outline" className="hidden h-11 sm:inline-flex" asChild>
           <a href="/rss.xml">
             <Rss data-icon="inline-start" />
             RSS feed
@@ -55,7 +64,7 @@ export function BlogPage() {
         </Button>
       </header>
 
-      <nav aria-label="Filter posts by tag" className="space-y-3">
+      <nav aria-label="Filter posts by tag" className="space-y-1 sm:space-y-3">
         <ul id={tagListId} className="flex flex-wrap gap-2">
           <li>
             <TagLink tag={null} active={!activeTag} label={`All (${posts.length})`} />

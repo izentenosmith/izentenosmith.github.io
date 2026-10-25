@@ -98,3 +98,19 @@ test('phones show the top tags and expand the rest on demand', async ({ page, is
   await page.getByRole('button', { name: 'Fewer tags' }).click()
   await expect(page.getByRole('link', { name: 'Posts tagged workflows', exact: true })).toBeVisible()
 })
+
+test('the first post title fits on the first screen of an iPhone-sized phone', async ({ browser }) => {
+  // iPhone 15 Safari's visible page area; shorter than the Pixel 7 project's.
+  const context = await browser.newContext({
+    viewport: { width: 393, height: 659 },
+    isMobile: true,
+    hasTouch: true,
+  })
+  const page = await context.newPage()
+  await page.goto('/blog')
+  const title = await page.getByRole('main').getByRole('heading', { level: 2 }).first().boundingBox()
+  expect(title).not.toBeNull()
+  expect(title!.y + title!.height).toBeLessThanOrEqual(659)
+  await expect(page.getByRole('main').getByRole('link', { name: 'RSS feed' })).toBeVisible()
+  await context.close()
+})
