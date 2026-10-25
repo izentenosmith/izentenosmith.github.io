@@ -38,7 +38,13 @@ export function Diagram({ width, height, title, caption, children }: DiagramProp
   const reduceMotion = useReducedMotion()
   return (
     <figure className="not-prose my-8">
-      <div className="overflow-x-auto rounded-xl border bg-card p-4">
+      {/* Scrolls sideways on narrow screens, so it must be reachable by keyboard. */}
+      <div
+        className="overflow-x-auto rounded-xl border bg-card p-4"
+        tabIndex={0}
+        role="region"
+        aria-label={`Diagram: ${title}`}
+      >
         <m.svg
           viewBox={`0 0 ${width} ${height}`}
           role="img"

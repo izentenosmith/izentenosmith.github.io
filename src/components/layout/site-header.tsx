@@ -94,7 +94,6 @@ export function SiteHeader() {
                   key={to}
                   to={to}
                   end={to === '/'}
-                  viewTransition
                   onClick={() => setMenuOpen(false)}
                   className={({ isActive }) =>
                     cn(

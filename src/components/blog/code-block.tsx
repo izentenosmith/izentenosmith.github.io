@@ -44,6 +44,8 @@ export function CodeBlock({
       <pre
         ref={preRef}
         {...props}
+        // Long lines scroll sideways, so the block must be reachable by keyboard.
+        tabIndex={0}
         className={cn('code-block m-0 overflow-x-auto py-4 font-mono text-[13px] leading-relaxed', className)}
       />
     </figure>
