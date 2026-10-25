@@ -8,24 +8,66 @@ export function CatalogToInstanceDiagram() {
       title="Catalog, configuration and instance layers for issues and tickets"
       caption="Catalogs say what exists, configurations say how pieces combine, instances record what happened."
     >
-      <text x={110} y={30} textAnchor="middle" className="fill-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+      <text
+        x={110}
+        y={30}
+        textAnchor="middle"
+        className="fill-muted-foreground font-mono text-[11px] tracking-wider uppercase"
+      >
         Catalog
       </text>
-      <text x={380} y={30} textAnchor="middle" className="fill-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+      <text
+        x={380}
+        y={30}
+        textAnchor="middle"
+        className="fill-muted-foreground font-mono text-[11px] tracking-wider uppercase"
+      >
         Configuration
       </text>
-      <text x={650} y={30} textAnchor="middle" className="fill-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+      <text
+        x={650}
+        y={30}
+        textAnchor="middle"
+        className="fill-muted-foreground font-mono text-[11px] tracking-wider uppercase"
+      >
         Instance
       </text>
 
       <Node x={30} y={52} w={160} h={50} label="issue_catalog" sub="what can be reported" mono />
-      <Node x={300} y={52} w={160} h={50} label="issue_configuration" sub="catalog × issue type" mono tone="brand" />
+      <Node
+        x={300}
+        y={52}
+        w={160}
+        h={50}
+        label="issue_configuration"
+        sub="catalog × issue type"
+        mono
+        tone="brand"
+      />
       <Node x={570} y={52} w={160} h={50} label="issue" sub="one report" mono />
 
-      <Node x={300} y={152} w={160} h={50} label="workflow_group" sub="versioned task graph" mono tone="brand" />
+      <Node
+        x={300}
+        y={152}
+        w={160}
+        h={50}
+        label="workflow_group"
+        sub="versioned task graph"
+        mono
+        tone="brand"
+      />
 
       <Node x={30} y={252} w={160} h={50} label="ticket_catalog" sub="what can be done" mono />
-      <Node x={300} y={252} w={160} h={50} label="ticket_configuration" sub="task × dept × SLAs" mono tone="brand" />
+      <Node
+        x={300}
+        y={252}
+        w={160}
+        h={50}
+        label="ticket_configuration"
+        sub="task × dept × SLAs"
+        mono
+        tone="brand"
+      />
       <Node x={570} y={252} w={160} h={50} label="ticket" sub="one unit of work" mono />
 
       <Edge d="M190,77 H296" />

@@ -14,8 +14,14 @@ export const profile = {
   highlights: [
     { value: '40×', label: 'faster business-critical queries after rewriting row-by-row SQL as set-based' },
     { value: '20×', label: 'current user load validated with zero errors against explicit latency SLAs' },
-    { value: '3 months', label: 'to take a stalled, business-critical ERP migration to production in every environment' },
-    { value: '12M', label: 'transactions per night in a banking reconciliation platform I architected end to end' },
+    {
+      value: '3 months',
+      label: 'to take a stalled, business-critical ERP migration to production in every environment',
+    },
+    {
+      value: '12M',
+      label: 'transactions per night in a banking reconciliation platform I architected end to end',
+    },
   ],
   skills: [
     { group: 'Languages', items: ['TypeScript', 'Go', 'Python', 'Bash'] },

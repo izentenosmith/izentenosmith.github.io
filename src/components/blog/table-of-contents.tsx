@@ -23,7 +23,13 @@ function useActiveHeading(ids: string[]) {
   return active
 }
 
-export function TableOfContents({ headings, onNavigate }: { headings: PostHeading[]; onNavigate?: () => void }) {
+export function TableOfContents({
+  headings,
+  onNavigate,
+}: {
+  headings: PostHeading[]
+  onNavigate?: () => void
+}) {
   const ids = useMemo(() => headings.map((heading) => heading.id), [headings])
   const active = useActiveHeading(ids)
 

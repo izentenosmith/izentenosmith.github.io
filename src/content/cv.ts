@@ -4,12 +4,24 @@ export type Role = {
   period: string
   title: string
   focus?: string
+  tags: string[]
   groups: { heading?: string; bullets: string[] }[]
 }
 
 export const roles: Role[] = [
   {
     company: 'Neolab',
+    tags: [
+      'Azure',
+      'Container Apps',
+      'SQL Server',
+      'Grafana',
+      'Prometheus',
+      'Loki',
+      'Alloy',
+      'k6',
+      'Claude Code',
+    ],
     location: 'Santiago, Chile',
     period: '2025 — Present',
     title: 'Tech Lead',
@@ -49,6 +61,7 @@ export const roles: Role[] = [
   },
   {
     company: 'Mercado Mayorista Lo Valledor',
+    tags: ['Grafana', 'Prometheus', 'Go', 'Docker'],
     location: 'Santiago, Chile',
     period: '2023 — 2025',
     title: 'Senior Software Engineer',
@@ -64,6 +77,7 @@ export const roles: Role[] = [
   },
   {
     company: 'Zapping',
+    tags: ['CI/CD', 'Prometheus', 'Loki', 'Grafana', '2FA'],
     location: 'Santiago, Chile',
     period: '2022 — 2023',
     title: 'Software Engineer',
@@ -79,6 +93,7 @@ export const roles: Role[] = [
   },
   {
     company: 'Biwiser',
+    tags: ['Microservices', 'Docker', 'Jenkins', 'CI/CD'],
     location: 'Santiago, Chile',
     period: '2021 — 2022',
     title: 'Junior Software Engineer',

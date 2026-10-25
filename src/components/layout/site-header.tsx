@@ -9,28 +9,47 @@ import { profile } from '@/content/profile'
 import { cn } from '@/lib/utils'
 import { navItems } from './nav-items'
 
+export function IzsBadge({ className }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        'relative grid h-7 place-items-center rounded-md bg-foreground px-1.5 font-mono text-xs font-semibold tracking-tight text-background',
+        className,
+      )}
+    >
+      IZS
+      <span className="absolute inset-x-1.5 bottom-1 h-px bg-brand" />
+    </span>
+  )
+}
+
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto flex h-14 max-w-4xl items-center gap-2 px-4">
-        <Link to="/" className="mr-auto flex items-center gap-2 font-heading font-semibold">
-          <span className="grid size-7 place-items-center rounded-md bg-foreground font-mono text-xs text-background">
-            IZ
-          </span>
+    <header className="site-header sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="mx-auto flex h-14 max-w-6xl items-center gap-1 px-4 sm:px-6">
+        <Link
+          to="/"
+          viewTransition
+          className="mr-auto flex items-center gap-2.5 rounded-md font-heading font-semibold"
+        >
+          <IzsBadge />
           <span className="hidden sm:inline">{profile.name}</span>
+          <span className="sr-only sm:hidden">{profile.name}</span>
         </Link>
 
-        <nav aria-label="Main" className="hidden items-center sm:flex">
+        <nav aria-label="Main" className="mr-1 hidden items-center sm:flex">
           {navItems.map(({ to, label }) => (
             <NavLink
               key={to}
               to={to}
               end={to === '/'}
+              viewTransition
               className={({ isActive }) =>
                 cn(
-                  'relative rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground',
+                  'relative rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors duration-(--dur-hover) hover:text-foreground',
                   isActive && 'text-foreground',
                 )
               }
@@ -41,10 +60,13 @@ export function SiteHeader() {
                     <m.span
                       layoutId="nav-active"
                       className="absolute inset-0 -z-10 rounded-md bg-muted"
-                      transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
+                      transition={{ type: 'spring', bounce: 0.15, duration: 0.35 }}
                     />
                   )}
                   {label}
+                  {isActive && (
+                    <span className="absolute inset-x-3 -bottom-[9px] h-0.5 rounded-full bg-brand" />
+                  )}
                 </>
               )}
             </NavLink>
@@ -55,13 +77,16 @@ export function SiteHeader() {
 
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="sm:hidden" aria-label="Open menu">
-              <Menu />
+            <Button variant="ghost" size="icon" className="size-11 sm:hidden" aria-label="Open menu">
+              <Menu className="size-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-64">
+          <SheetContent side="right" className="w-72">
             <SheetHeader>
-              <SheetTitle>{profile.name}</SheetTitle>
+              <SheetTitle className="flex items-center gap-2.5">
+                <IzsBadge />
+                {profile.name}
+              </SheetTitle>
             </SheetHeader>
             <nav aria-label="Main" className="flex flex-col gap-1 px-4">
               {navItems.map(({ to, label }) => (
@@ -72,8 +97,8 @@ export function SiteHeader() {
                   onClick={() => setMenuOpen(false)}
                   className={({ isActive }) =>
                     cn(
-                      'rounded-md px-3 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
-                      isActive && 'bg-muted text-foreground',
+                      'flex min-h-11 items-center rounded-md px-3 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+                      isActive && 'bg-muted font-medium text-foreground',
                     )
                   }
                 >

@@ -1,7 +1,10 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { Feed } from 'feed'
 import type { Plugin, ResolvedConfig } from 'vite'
-import { headTags, postPageMeta, SITE_URL, staticPages, type PageMeta } from '../src/content/seo.ts'
+import type { PostMeta } from '../src/content/post-types.ts'
+import { profile } from '../src/content/profile.ts'
+import { headTags, OG_IMAGE, postPageMeta, SITE_URL, staticPages, type PageMeta } from '../src/content/seo.ts'
 import { readPosts } from './posts-plugin.ts'
 
 const HEAD_START = '<!-- head:start -->'
@@ -30,11 +33,37 @@ function withHead(html: string, page: PageMeta) {
   return html.slice(0, start) + renderHead(page) + html.slice(end + HEAD_END.length)
 }
 
+function rssFeed(posts: PostMeta[]) {
+  const feed = new Feed({
+    id: `${SITE_URL}/blog`,
+    link: `${SITE_URL}/blog`,
+    title: `${profile.name} — Blog`,
+    description: staticPages[2].description,
+    language: 'en',
+    image: OG_IMAGE,
+    copyright: `© ${new Date().getFullYear()} ${profile.name}`,
+    author: { name: profile.name, link: SITE_URL },
+    feedLinks: { rss: `${SITE_URL}/rss.xml` },
+  })
+  for (const post of posts) {
+    const url = `${SITE_URL}/blog/${post.slug}`
+    feed.addItem({
+      id: url,
+      link: url,
+      title: post.title,
+      description: post.description,
+      date: new Date(`${post.date}T12:00:00Z`),
+      category: post.tags.map((tag) => ({ name: tag })),
+    })
+  }
+  return feed.rss2()
+}
+
 /**
  * The site is client-rendered, but link-preview crawlers don't run JavaScript.
  * After the build, this writes one copy of index.html per route with that
  * route's title, description and Open Graph tags (the body stays the same
- * empty shell), plus sitemap.xml. GitHub Pages serves `/experience` from
+ * empty shell), plus sitemap.xml and rss.xml. GitHub Pages serves `/experience` from
  * `experience.html`, so real routes also stop answering with a 404 status.
  */
 export function routeHtmlPlugin(postsDir: string): Plugin {
@@ -63,6 +92,7 @@ export function routeHtmlPlugin(postsDir: string): Plugin {
         const lastmod = page.publishedTime ? `<lastmod>${page.publishedTime}</lastmod>` : ''
         return `  <url><loc>${SITE_URL}${page.path}</loc>${lastmod}</url>`
       })
+      await writeFile(path.join(outDir, 'rss.xml'), rssFeed(posts))
       await writeFile(
         path.join(outDir, 'sitemap.xml'),
         `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`,

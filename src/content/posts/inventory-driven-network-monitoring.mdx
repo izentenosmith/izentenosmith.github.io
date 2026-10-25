@@ -79,7 +79,7 @@ Prometheus' [HTTP service discovery](https://prometheus.io/docs/prometheus/lates
 
 The discovery service is one HTTP handler that runs a query and reshapes the rows:
 
-```go
+```go title="discovery-service/targets.go"
 type TargetGroup struct {
 	Targets []string          `json:"targets"`
 	Labels  map[string]string `json:"labels"`
@@ -135,7 +135,7 @@ func targetsHandler(db *sql.DB) http.HandlerFunc {
 
 Neither SNMP nor ICMP is something Prometheus speaks natively. Both exporters use the *multi-target exporter* pattern: Prometheus scrapes the exporter and passes the real device in a `target` query parameter. Relabeling does the rewrite:
 
-```yaml
+```yaml title="prometheus/prometheus.segment_a.yml"
 global:
   scrape_interval: 15s
   scrape_timeout: 10s
@@ -155,7 +155,7 @@ scrape_configs:
         target_label: __param_target   # → ?target=10.20.4.17
       - source_labels: [__param_target]
         target_label: instance         # keep the device IP as `instance`
-      - target_label: __address__
+      - target_label: __address__ # [!code highlight]
         replacement: snmp-exporter:9116 # but actually scrape the exporter
 
   - job_name: icmp
@@ -190,7 +190,7 @@ Labels returned by service discovery become **target labels**, and Prometheus at
 
 blackbox_exporter needs a module that pings:
 
-```yaml
+```yaml title="blackbox/config.yml"
 modules:
   icmp:
     prober: icmp
@@ -203,7 +203,7 @@ ICMP needs permission to open a raw socket (or an unprivileged ping socket). If 
 
 snmp_exporter separates *what to walk* (modules, generated from MIBs; the stock `if_mib` covers interfaces and uptime) from *how to authenticate* (auths). Each segment gets its own auth entry:
 
-```yaml
+```yaml title="snmp_exporter/snmp.yml"
 auths:
   segment_a:
     version: 2
@@ -224,7 +224,7 @@ SNMPv2c sends the community string in clear text. Where devices support it, v3 w
 
 Each network segment gets its own stack, rather than one central Prometheus reaching into all of them. That keeps segments independent, and works even when the segments can't route to each other. The Compose file stays identical; an environment variable picks the segment-specific Prometheus config:
 
-```yaml
+```yaml title="compose.yaml"
 services:
   prometheus:
     image: prom/prometheus
@@ -264,7 +264,7 @@ rate(ifHCInOctets{job="snmp"}[5m]) * 8
 
 And the alert that wakes someone up already says where to go:
 
-```yaml
+```yaml title="prometheus/rules/network.yml"
 groups:
   - name: network
     rules:

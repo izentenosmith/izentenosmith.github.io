@@ -9,7 +9,15 @@ pnpm install
 pnpm dev
 ```
 
-`pnpm lint`, `pnpm typecheck` and `pnpm build` are the same checks CI runs.
+`pnpm lint`, `pnpm format:check`, `pnpm typecheck` and `pnpm build` are the same checks CI runs. `pnpm format` fixes formatting.
+
+End-to-end tests run against the production build (every page in both themes, on desktop and mobile, with axe accessibility checks):
+
+```bash
+pnpm exec playwright install chromium
+pnpm build
+pnpm test:e2e
+```
 
 ## Branches and deploys
 
@@ -23,8 +31,12 @@ The site is client-rendered (no SSR). After the build, `mdx/route-html-plugin.ts
 
 ## Writing a post
 
-Add `src/content/posts/<slug>.mdx` with `title`, `description`, `date` and `tags` frontmatter. Diagrams live next to the posts in `src/content/posts/diagrams/` and use the SVG kit in `src/components/diagram/`. Reading time, headings and the sitemap entry are generated at build time.
+Add `src/content/posts/<slug>.mdx` with `title`, `description`, `date` and `tags` frontmatter (optionally `featured: true`); it's validated at build time. Code fences accept `title="file.ext"`, and `# [!code highlight]` / `# [!code ++]` comments highlight lines. Diagrams live next to the posts in `src/content/posts/diagrams/` and use the SVG kit in `src/components/diagram/`. Reading time, headings and the sitemap entry are generated at build time.
 
-## Link-preview image
+## Design system
 
-`public/og.png` is rendered from `src/content/profile.ts` by `pnpm og`; rerun it after changing the name, title or tagline.
+Tokens live in `src/index.css`: zinc neutrals plus three accents with one job each — electric blue (`brand`) for links, focus and actions; green (`signal`) for status; amber (`metric`) for numbers. The type scale (`text-display`, `text-h1`…, `text-reading`) and motion tokens (`--dur-*`, `--ease-enter`, `--ease-exit`) are defined there too. Animations always respect `prefers-reduced-motion`.
+
+## Brand assets and photos
+
+`pnpm brand` renders the IZS favicon, app icons, web manifest and the link-preview image (`public/og.png`) from `scripts/brand-assets.ts` and `src/content/profile.ts`. Photos live in `src/assets/` and are resized to AVIF/WebP at build time by `vite-imagetools` (see `src/assets/images.ts`).

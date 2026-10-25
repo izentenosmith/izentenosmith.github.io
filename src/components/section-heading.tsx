@@ -1,10 +1,23 @@
 import type { ReactNode } from 'react'
+import { cn } from '@/lib/utils'
 
-export function SectionHeading({ eyebrow, children }: { eyebrow: string; children: ReactNode }) {
+export function SectionHeading({
+  eyebrow,
+  children,
+  id,
+  className,
+}: {
+  eyebrow: string
+  children: ReactNode
+  id?: string
+  className?: string
+}) {
   return (
-    <div className="space-y-1">
+    <div className={cn('space-y-2', className)}>
       <p className="font-mono text-xs tracking-wider text-brand uppercase">{eyebrow}</p>
-      <h2 className="font-heading text-2xl font-semibold tracking-tight">{children}</h2>
+      <h2 id={id} className="font-heading text-h2 font-semibold">
+        {children}
+      </h2>
     </div>
   )
 }

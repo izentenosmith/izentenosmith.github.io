@@ -6,6 +6,7 @@ export type PostMeta = {
   description: string
   date: string
   tags: string[]
+  featured: boolean
   readingMinutes: number
   headings: PostHeading[]
 }
