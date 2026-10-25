@@ -62,7 +62,7 @@ export function ContactPage() {
             return (
               <li
                 key={label}
-                className="group relative flex interactive-card items-center gap-4 rounded-xl border bg-card p-4 hover:border-brand/50 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring"
+                className="group spotlight flex interactive-card items-center gap-4 rounded-2xl border bg-card p-4 hover:border-brand/40 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring"
               >
                 <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-muted">
                   <Icon aria-hidden="true" className="size-5" />
