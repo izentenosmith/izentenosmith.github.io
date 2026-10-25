@@ -36,7 +36,7 @@ The lake (ADLS Gen2 with the hierarchical namespace enabled, which gives Delta r
 
 The property that matters most at this layer is **idempotency**. Jobs fail and get rerun; a rerun must not double-count. Writing silver with a `MERGE` keyed on the transaction id makes that automatic:
 
-```python
+```python title="jobs/silver_transactions.py"
 from delta.tables import DeltaTable
 from pyspark.sql import Window, functions as F
 
@@ -53,7 +53,7 @@ clean = (
 
 (
     DeltaTable.forName(spark, "silver.transactions").alias("t")
-    .merge(clean.alias("s"), "t.transaction_id = s.transaction_id")
+    .merge(clean.alias("s"), "t.transaction_id = s.transaction_id")  # [!code highlight]
     .whenMatchedUpdateAll()
     .whenNotMatchedInsertAll()
     .execute()
@@ -76,7 +76,7 @@ For auditability, every score comes with a reason. **SHAP** values break a predi
 
 Scoring ten million rows with explanations doesn't fit on a driver node, so it runs distributed with `mapInPandas`, loading the model once per partition:
 
-```python
+```python title="jobs/score.py"
 import mlflow
 import numpy as np
 import pandas as pd
@@ -115,7 +115,7 @@ A model trained once degrades as behavior changes, and the patterns this model l
 - **Evaluate**: the challenger and the current champion are scored **on the same fresh holdout**. Comparing the challenger's new metrics with the champion's metrics from months ago measures the data drift, not the model.
 - **Promote**: if the challenger wins by a margin you've agreed on in advance, the `@champion` alias moves to it. The nightly job loads `models:/transaction-scorer@champion`, so promotion needs no deploy at all.
 
-```python
+```python title="training/promote.py"
 from mlflow import MlflowClient
 
 client = MlflowClient()

@@ -1,110 +1,131 @@
-import { ArrowRight, MapPin } from 'lucide-react'
-import { m, type Variants } from 'motion/react'
+import { ArrowRight, Mail, MapPin } from 'lucide-react'
+import type { CSSProperties } from 'react'
 import { Link } from 'react-router'
+import { images } from '@/assets/images'
+import { LinkedinIcon } from '@/components/brand-icons'
 import { PostCard } from '@/components/blog/post-card'
+import { CountUp } from '@/components/motion/count-up'
 import { Reveal } from '@/components/motion/reveal'
+import { Picture } from '@/components/picture'
 import { SectionHeading } from '@/components/section-heading'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { posts } from '@/content/posts'
 import { profile } from '@/content/profile'
 import { staticPages } from '@/content/seo'
 import { usePageMeta } from '@/lib/use-page-meta'
 
-const hero: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.08 } },
-}
-
-const heroItem: Variants = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: 'easeOut' } },
-}
+/** Staggers the CSS hero entrance; see `animate-enter` in index.css. */
+const enter = (index: number) => ({ '--enter-index': index }) as CSSProperties
 
 export function HomePage() {
   usePageMeta(staticPages[0])
+
   return (
-    <div className="space-y-20">
-      <section className="relative">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -inset-x-4 -top-16 -bottom-8 -z-10 bg-[radial-gradient(var(--border)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_at_top_left,black,transparent_70%)] [background-size:20px_20px]"
-        />
-        <m.div variants={hero} initial="hidden" animate="visible" className="max-w-2xl space-y-6">
-          <m.p
-            variants={heroItem}
-            className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-sm text-muted-foreground"
+    <div className="space-y-24 sm:space-y-32">
+      <section aria-labelledby="hero-title" className="grid items-center gap-10 lg:grid-cols-12 lg:gap-12">
+        <div className="space-y-6 lg:col-span-7">
+          <p
+            style={enter(0)}
+            className="animate-enter inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 font-mono text-xs text-muted-foreground"
           >
-            <span className="flex items-center gap-2 whitespace-nowrap">
-              <span className="relative flex size-2">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand opacity-60 motion-reduce:hidden" />
-                <span className="relative inline-flex size-2 rounded-full bg-brand" />
-              </span>
-              {profile.title}
-            </span>
-            <span aria-hidden="true" className="hidden sm:inline">
-              ·
-            </span>
-            <span className="flex items-center gap-1.5 whitespace-nowrap">
-              <MapPin className="size-3.5" />
-              {profile.location}
-            </span>
-          </m.p>
-          <m.h1
-            variants={heroItem}
-            className="font-heading text-4xl font-semibold tracking-tight text-balance sm:text-5xl"
-          >
+            <span aria-hidden="true" className="size-2 rounded-full bg-signal" />
+            {profile.title}
+            <span aria-hidden="true">·</span>
+            <MapPin aria-hidden="true" className="size-3.5" />
+            {profile.location}
+          </p>
+          <h1 id="hero-title" style={enter(1)} className="animate-enter font-heading text-display font-semibold text-balance">
             {profile.name}
-          </m.h1>
-          <m.p variants={heroItem} className="text-xl text-pretty text-foreground/90">
+          </h1>
+          <p style={enter(2)} className="animate-enter max-w-2xl text-xl text-pretty text-foreground/90 sm:text-2xl sm:leading-snug">
             {profile.tagline}
-          </m.p>
-          <m.p variants={heroItem} className="text-pretty text-muted-foreground">
+          </p>
+          <p style={enter(3)} className="animate-enter max-w-2xl text-reading text-pretty text-muted-foreground">
             {profile.summary}
-          </m.p>
-          <m.div variants={heroItem} className="flex flex-wrap gap-3 pt-2">
-            <Button size="lg" asChild>
-              <Link to="/experience">
+          </p>
+          <div style={enter(4)} className="animate-enter flex flex-wrap gap-3 pt-2">
+            <Button size="lg" className="h-11 px-4" asChild>
+              <Link to="/experience" viewTransition>
                 View experience
                 <ArrowRight data-icon="inline-end" />
               </Link>
             </Button>
-            <Button size="lg" variant="outline" asChild>
-              <Link to="/blog">Read the blog</Link>
+            <Button size="lg" variant="outline" className="h-11 px-4" asChild>
+              <Link to="/blog" viewTransition>
+                Read the blog
+              </Link>
             </Button>
-            <Button size="lg" variant="ghost" asChild>
-              <Link to="/contact">Get in touch</Link>
+            <Button size="lg" variant="ghost" className="h-11 px-4" asChild>
+              <Link to="/contact" viewTransition>
+                Get in touch
+              </Link>
             </Button>
-          </m.div>
-        </m.div>
-      </section>
-
-      <section className="space-y-6">
-        <Reveal>
-          <SectionHeading eyebrow="Impact">A few numbers I'm proud of</SectionHeading>
-        </Reveal>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {profile.highlights.map(({ value, label }, index) => (
-            <Reveal key={value} delay={index * 0.06} className="h-full">
-              <Card className="h-full transition-shadow hover:ring-brand/50">
-                <CardContent className="space-y-2">
-                  <p className="font-mono text-3xl font-semibold tracking-tight text-brand">{value}</p>
-                  <p className="text-sm text-pretty text-muted-foreground">{label}</p>
-                </CardContent>
-              </Card>
-            </Reveal>
-          ))}
+          </div>
         </div>
+
+        <figure style={enter(2)} className="animate-enter relative mx-auto w-full max-w-sm lg:col-span-5 lg:max-w-none">
+          <div className="overflow-hidden rounded-2xl border bg-card">
+            <Picture
+              picture={images.portrait.picture}
+              alt={images.portrait.alt}
+              sizes="(min-width: 1024px) 440px, (min-width: 640px) 384px, 90vw"
+              priority
+              className="aspect-[4/5]"
+            />
+          </div>
+          <figcaption className="absolute bottom-3 left-3 rounded-md border bg-background/90 px-2 py-1 font-mono text-xs backdrop-blur">
+            <span className="text-brand">$</span> whoami
+          </figcaption>
+        </figure>
       </section>
 
-      <section className="space-y-6">
+      <section aria-labelledby="impact-title" className="space-y-8">
         <Reveal>
-          <SectionHeading eyebrow="Toolbox">What I work with</SectionHeading>
+          <SectionHeading id="impact-title" eyebrow="Impact">
+            A few numbers I'm proud of
+          </SectionHeading>
         </Reveal>
-        <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
-          {profile.skills.map(({ group, items }, index) => (
-            <Reveal key={group} delay={index * 0.04} className="space-y-2">
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {profile.highlights.map(({ value, label }) => (
+            <li key={value} className="rounded-xl border bg-card p-5">
+              <CountUp value={value} className="block font-mono text-h1 font-semibold text-metric" />
+              <p className="mt-2 text-sm text-pretty text-muted-foreground">{label}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section aria-labelledby="writing-title" className="space-y-8">
+        <Reveal className="flex flex-wrap items-end justify-between gap-4">
+          <SectionHeading id="writing-title" eyebrow="Writing">
+            From the blog
+          </SectionHeading>
+          <Button variant="ghost" className="h-11" asChild>
+            <Link to="/blog" viewTransition>
+              All posts
+              <ArrowRight data-icon="inline-end" />
+            </Link>
+          </Button>
+        </Reveal>
+        <ul className="grid gap-4 lg:grid-cols-3">
+          {posts.slice(0, 3).map((post) => (
+            <li key={post.slug}>
+              <PostCard post={post} />
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section aria-labelledby="toolbox-title" className="space-y-8">
+        <Reveal>
+          <SectionHeading id="toolbox-title" eyebrow="Toolbox">
+            What I work with
+          </SectionHeading>
+        </Reveal>
+        <dl className="grid gap-x-10 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
+          {profile.skills.map(({ group, items }) => (
+            <div key={group} className="space-y-2">
               <dt className="text-sm font-medium">{group}</dt>
               <dd className="flex flex-wrap gap-1.5">
                 {items.map((item) => (
@@ -113,30 +134,38 @@ export function HomePage() {
                   </Badge>
                 ))}
               </dd>
-            </Reveal>
+            </div>
           ))}
         </dl>
       </section>
 
-      <section className="space-y-6">
-        <Reveal className="flex items-end justify-between gap-4">
-          <SectionHeading eyebrow="Writing">From the blog</SectionHeading>
-          <Button variant="ghost" asChild>
-            <Link to="/blog">
-              All posts
-              <ArrowRight data-icon="inline-end" />
-            </Link>
-          </Button>
+      <section aria-labelledby="talk-title">
+        <Reveal className="grid gap-6 rounded-2xl border bg-card p-6 sm:p-10 lg:grid-cols-12 lg:items-center">
+          <div className="space-y-3 lg:col-span-8">
+            <p className="font-mono text-xs tracking-wider text-brand uppercase">Contact</p>
+            <h2 id="talk-title" className="font-heading text-h2 font-semibold">
+              Let's talk
+            </h2>
+            <p className="max-w-xl text-pretty text-muted-foreground">
+              Backend architecture, platform and infrastructure work, or technical leadership. Email is the
+              fastest way to reach me.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3 lg:col-span-4 lg:justify-end">
+            <Button size="lg" className="h-11 px-4" asChild>
+              <a href={`mailto:${profile.email}`}>
+                <Mail data-icon="inline-start" />
+                Email me
+              </a>
+            </Button>
+            <Button size="lg" variant="outline" className="h-11 px-4" asChild>
+              <a href={profile.links.linkedin} target="_blank" rel="noreferrer">
+                <LinkedinIcon className="size-4" />
+                LinkedIn
+              </a>
+            </Button>
+          </div>
         </Reveal>
-        <ul className="grid gap-4">
-          {posts.slice(0, 3).map((post, index) => (
-            <li key={post.slug}>
-              <Reveal delay={index * 0.06} className="h-full">
-                <PostCard post={post} />
-              </Reveal>
-            </li>
-          ))}
-        </ul>
       </section>
     </div>
   )

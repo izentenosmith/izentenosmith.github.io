@@ -1,4 +1,5 @@
-import { LazyMotion, MotionConfig, m } from 'motion/react'
+import { LazyMotion, MotionConfig } from 'motion/react'
+import { useEffect, useRef } from 'react'
 import { Outlet, ScrollRestoration, useLocation } from 'react-router'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { SiteFooter } from './site-footer'
@@ -8,8 +9,28 @@ import { SiteHeader } from './site-header'
 // render their initial state until then.
 const loadMotionFeatures = () => import('@/components/motion/features').then((module) => module.default)
 
-export function SiteLayout() {
+/**
+ * After client-side navigation, move focus to the new page's content so
+ * keyboard and screen reader users start there instead of on the old link.
+ */
+function useFocusOnRouteChange() {
+  const mainRef = useRef<HTMLElement>(null)
   const { pathname } = useLocation()
+  const firstRender = useRef(true)
+
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false
+      return
+    }
+    mainRef.current?.focus({ preventScroll: true })
+  }, [pathname])
+
+  return mainRef
+}
+
+export function SiteLayout() {
+  const mainRef = useFocusOnRouteChange()
 
   return (
     <LazyMotion features={loadMotionFeatures} strict>
@@ -21,19 +42,16 @@ export function SiteLayout() {
           >
             Skip to content
           </a>
-          <div className="flex min-h-svh flex-col">
+          <div className="flex min-h-dvh flex-col">
             <SiteHeader />
-            <m.main
+            <main
+              ref={mainRef}
               id="main"
               tabIndex={-1}
-              key={pathname}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="mx-auto w-full max-w-4xl flex-1 px-4 py-12 outline-none sm:py-16"
+              className="mx-auto w-full max-w-6xl flex-1 px-4 py-12 outline-none sm:px-6 sm:py-16"
             >
               <Outlet />
-            </m.main>
+            </main>
             <SiteFooter />
           </div>
           <ScrollRestoration />

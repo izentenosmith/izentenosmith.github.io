@@ -3,6 +3,8 @@ import { Link } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatPostDate, type PostMeta } from '@/content/posts'
+import { cn } from '@/lib/utils'
+import { postTitleTransition } from '@/lib/view-transitions'
 
 export function PostMetaLine({ post }: { post: PostMeta }) {
   return (
@@ -12,28 +14,64 @@ export function PostMetaLine({ post }: { post: PostMeta }) {
   )
 }
 
-/** `headingLevel` keeps the outline valid: h2 under a page title, h3 inside a section. */
-export function PostCard({ post, headingLevel = 'h3' }: { post: PostMeta; headingLevel?: 'h2' | 'h3' }) {
+export function PostTags({ tags, className }: { tags: string[]; className?: string }) {
+  return (
+    <ul className={cn('flex flex-wrap gap-1.5', className)} aria-label="Tags">
+      {tags.map((tag) => (
+        <li key={tag}>
+          <Badge variant="outline" className="font-mono">
+            {tag}
+          </Badge>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+type PostCardProps = {
+  post: PostMeta
+  /** h2 under a page title, h3 inside a section, so the outline has no gaps. */
+  headingLevel?: 'h2' | 'h3'
+  featured?: boolean
+}
+
+export function PostCard({ post, headingLevel = 'h3', featured = false }: PostCardProps) {
   const Heading = headingLevel
   return (
-    <Card className="group relative h-full transition-shadow hover:ring-brand/50">
-      <CardContent className="flex h-full flex-col gap-3">
-        <PostMetaLine post={post} />
-        <Heading className="font-heading text-lg font-semibold tracking-tight text-balance">
-          <Link to={`/blog/${post.slug}`} className="after:absolute after:inset-0">
+    <Card className="interactive-card group relative h-full hover:ring-brand/50 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring">
+      <CardContent className={cn('flex h-full flex-col gap-3', featured && 'gap-4 sm:p-2')}>
+        <div className="flex items-center justify-between gap-3">
+          <PostMetaLine post={post} />
+          {featured && (
+            <Badge className="bg-brand/10 font-mono text-brand" variant="secondary">
+              Featured
+            </Badge>
+          )}
+        </div>
+        <Heading
+          className={cn(
+            'font-heading font-semibold tracking-tight text-balance',
+            featured ? 'text-h3 sm:text-h2' : 'text-lg',
+          )}
+        >
+          <Link
+            to={`/blog/${post.slug}`}
+            viewTransition
+            className="after:absolute after:inset-0 focus-visible:outline-none"
+            style={postTitleTransition(post.slug)}
+          >
             {post.title}
           </Link>
         </Heading>
-        <p className="flex-1 text-pretty text-muted-foreground">{post.description}</p>
+        <p className={cn('flex-1 text-pretty text-muted-foreground', featured && 'text-base sm:text-lg')}>
+          {post.description}
+        </p>
         <div className="flex items-end justify-between gap-4">
-          <div className="flex flex-wrap gap-1.5">
-            {post.tags.map((tag) => (
-              <Badge key={tag} variant="outline" className="font-mono text-[11px]">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-          <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-brand" />
+          <PostTags tags={post.tags} />
+          <ArrowRight
+            aria-hidden="true"
+            className="size-4 shrink-0 text-muted-foreground transition-transform duration-(--dur-hover) group-hover:translate-x-0.5 group-hover:text-brand"
+          />
         </div>
       </CardContent>
     </Card>

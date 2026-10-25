@@ -25,21 +25,19 @@ At any moment one color serves traffic and the other is either idle (the previou
 
 Each color gets a small file that only defines upstreams:
 
-```nginx
-# /etc/nginx/sites-available/prod-upstream-blue.conf
+```nginx title="sites-available/prod-upstream-blue.conf"
 upstream app_frontend { server 127.0.0.1:5001; }
 upstream app_backend  { server 127.0.0.1:4001; }
 ```
 
-```nginx
-# /etc/nginx/sites-available/prod-upstream-green.conf
+```nginx title="sites-available/prod-upstream-green.conf"
 upstream app_frontend { server 127.0.0.1:5002; }
 upstream app_backend  { server 127.0.0.1:4002; }
 ```
 
 The site configuration never mentions a color. It only refers to the upstream names:
 
-```nginx
+```nginx title="sites-available/app.conf"
 server {
     listen 443 ssl;
     http2 on;
@@ -49,7 +47,7 @@ server {
     ssl_certificate_key /etc/ssl/app/server.key;
 
     location /api/ {
-        proxy_pass http://app_backend;
+        proxy_pass http://app_backend; # [!code highlight]
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
@@ -80,7 +78,7 @@ Bind the stacks' published ports to loopback (`"127.0.0.1:4001:<container port>"
 
 Changing the link by hand works until someone fat-fingers a path and reloads Nginx into a broken config. The switch script exists to make that impossible: it changes the link, asks Nginx to validate the whole configuration, and only then reloads. If validation fails, it puts the old link back.
 
-```bash
+```bash title="switch-active-upstream.sh"
 #!/usr/bin/env bash
 # Usage: switch-active-upstream.sh [--dry-run] <env> <blue|green>
 set -euo pipefail
@@ -103,8 +101,8 @@ previous="$(readlink "$link" || true)"
 echo "$link: ${previous:-<none>} -> $target"
 if $dry_run; then exit 0; fi
 
-ln -sfn "$target" "$link"
-if nginx -t; then
+ln -sfn "$target" "$link" # [!code highlight]
+if nginx -t; then # [!code highlight]
     systemctl reload nginx
     echo "$env is now served by $color"
 else

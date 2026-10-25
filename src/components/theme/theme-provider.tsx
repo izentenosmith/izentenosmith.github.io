@@ -37,6 +37,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } catch {
       // Not persisted; the choice still applies for this visit.
     }
+    // Apply synchronously so a view transition can snapshot the new theme.
+    applyTheme(next)
     setThemeState(next)
   }
 

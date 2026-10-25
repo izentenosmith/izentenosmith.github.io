@@ -6,12 +6,24 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 
 type Status = 'idle' | 'copied' | 'failed'
 
-const feedback = {
-  copied: { text: 'Copied', icon: <Check className="size-4 text-brand" /> },
-  failed: { text: "Couldn't copy, select the address instead", icon: <X className="size-4 text-destructive" /> },
+type CopyButtonProps = {
+  /** The text to copy, or a function that reads it at click time. */
+  value: string | (() => string)
+  label: string
+  failedText?: string
+  className?: string
 }
 
-export function CopyButton({ value, label }: { value: string; label: string }) {
+export function CopyButton({
+  value,
+  label,
+  failedText = "Couldn't copy, select the text instead",
+  className = 'size-11 sm:size-9',
+}: CopyButtonProps) {
+  const feedback = {
+    copied: { text: 'Copied', icon: <Check className="size-4 text-signal" /> },
+    failed: { text: failedText, icon: <X className="size-4 text-destructive" /> },
+  }
   const [status, setStatus] = useState<Status>('idle')
 
   useEffect(() => {
@@ -22,7 +34,7 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(value)
+      await navigator.clipboard.writeText(typeof value === 'function' ? value() : value)
       setStatus('copied')
     } catch {
       // Clipboard can be unavailable (insecure context, denied permission).
@@ -33,7 +45,7 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
   return (
     <Tooltip open={status !== 'idle' || undefined}>
       <TooltipTrigger asChild>
-        <Button variant="outline" size="icon" onClick={copy} aria-label={label}>
+        <Button variant="outline" size="icon" className={className} onClick={copy} aria-label={label}>
           <AnimatePresence mode="wait" initial={false}>
             <m.span
               key={status}

@@ -11,13 +11,20 @@ import { unified } from 'unified'
 import { visit } from 'unist-util-visit'
 import type { Plugin } from 'vite'
 import { parse as parseYaml } from 'yaml'
+import { z } from 'zod'
 import type { PostMeta } from '../src/content/post-types.ts'
 
 const VIRTUAL_ID = 'virtual:posts'
 const RESOLVED_ID = `\0${VIRTUAL_ID}`
 const WORDS_PER_MINUTE = 220
 
-type Frontmatter = Pick<PostMeta, 'title' | 'description' | 'date' | 'tags'>
+const frontmatterSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().min(20, 'description is used for link previews; write a full sentence'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'use YYYY-MM-DD'),
+  tags: z.array(z.string().regex(/^[a-z0-9-]+$/, 'tags are lowercase-kebab-case')).min(1),
+  featured: z.boolean().default(false),
+})
 
 const parser = unified().use(remarkParse).use(remarkMdx).use(remarkFrontmatter).use(remarkGfm)
 
@@ -26,7 +33,7 @@ function extractMeta(slug: string, source: string): PostMeta {
   // Same slug algorithm as rehype-slug, so ids match the rendered headings.
   const slugger = new GithubSlugger()
   const headings: PostMeta['headings'] = []
-  let frontmatter: Partial<Frontmatter> = {}
+  let frontmatter: unknown = {}
   let words = 0
 
   visit(tree, (node) => {
@@ -42,13 +49,14 @@ function extractMeta(slug: string, source: string): PostMeta {
     }
   })
 
-  for (const key of ['title', 'description', 'date', 'tags'] as const) {
-    if (!frontmatter[key]) throw new Error(`Post "${slug}" is missing frontmatter "${key}"`)
+  const parsed = frontmatterSchema.safeParse(frontmatter)
+  if (!parsed.success) {
+    const problems = parsed.error.issues.map((issue) => `  ${issue.path.join('.') || 'frontmatter'}: ${issue.message}`)
+    throw new Error(`Invalid frontmatter in post "${slug}":\n${problems.join('\n')}`)
   }
 
   return {
-    ...(frontmatter as Frontmatter),
-    date: String(frontmatter.date),
+    ...parsed.data,
     slug,
     readingMinutes: Math.max(1, Math.round(words / WORDS_PER_MINUTE)),
     headings,
@@ -65,7 +73,10 @@ export async function readPosts(postsDir: string, onFile?: (path: string) => voi
       return extractMeta(path.basename(file, '.mdx'), await readFile(fullPath, 'utf8'))
     }),
   )
-  return posts.sort((a, b) => b.date.localeCompare(a.date) || a.title.localeCompare(b.title))
+  return posts.sort(
+    (a, b) =>
+      b.date.localeCompare(a.date) || Number(b.featured) - Number(a.featured) || a.title.localeCompare(b.title),
+  )
 }
 
 /**
