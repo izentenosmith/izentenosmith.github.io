@@ -1,5 +1,5 @@
-import { Rss } from 'lucide-react'
-import type { CSSProperties } from 'react'
+import { ChevronDown, Rss } from 'lucide-react'
+import { useId, useState, type CSSProperties } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { PostCard } from '@/components/blog/post-card'
 import { Button } from '@/components/ui/button'
@@ -8,7 +8,20 @@ import { staticPages } from '@/content/seo'
 import { usePageMeta } from '@/lib/use-page-meta'
 import { cn } from '@/lib/utils'
 
-const allTags = [...new Set(posts.flatMap((post) => post.tags))].sort()
+const tagCounts = new Map<string, number>()
+for (const tag of posts.flatMap((post) => post.tags)) tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1)
+
+// Most-used tags first; ties go to each post's lead tag (in post order), so the
+// short list on phones still reaches every post. Then alphabetical.
+const leadTags = posts.map((post) => post.tags[0])
+const leadRank = (tag: string) => (leadTags.includes(tag) ? leadTags.indexOf(tag) : leadTags.length)
+const allTags = [...tagCounts.keys()].sort(
+  (a, b) => tagCounts.get(b)! - tagCounts.get(a)! || leadRank(a) - leadRank(b) || a.localeCompare(b),
+)
+
+/** Phones show this many tags until "More tags" is pressed; wider screens show all. */
+const PHONE_TAG_LIMIT = 6
+const hiddenOnPhones = Math.max(0, allTags.length - PHONE_TAG_LIMIT)
 
 export function BlogPage() {
   usePageMeta(staticPages[2])
@@ -18,6 +31,8 @@ export function BlogPage() {
   const visible = activeTag ? posts.filter((post) => post.tags.includes(activeTag)) : posts
   const featured = activeTag ? undefined : visible.find((post) => post.featured)
   const rest = visible.filter((post) => post !== featured)
+  const [showAllTags, setShowAllTags] = useState(false)
+  const tagListId = useId()
 
   return (
     <div className="space-y-12">
@@ -40,17 +55,36 @@ export function BlogPage() {
         </Button>
       </header>
 
-      <nav aria-label="Filter posts by tag">
-        <ul className="flex flex-wrap gap-2">
+      <nav aria-label="Filter posts by tag" className="space-y-3">
+        <ul id={tagListId} className="flex flex-wrap gap-2">
           <li>
             <TagLink tag={null} active={!activeTag} label={`All (${posts.length})`} />
           </li>
-          {allTags.map((tag) => (
-            <li key={tag}>
-              <TagLink tag={tag} active={activeTag === tag} label={tag} />
-            </li>
-          ))}
+          {allTags.map((tag, index) => {
+            // The active tag always stays visible, even when it's past the phone limit.
+            const collapsed = index >= PHONE_TAG_LIMIT && !showAllTags && tag !== activeTag
+            return (
+              <li key={tag} className={cn(collapsed && 'hidden sm:block')}>
+                <TagLink tag={tag} active={activeTag === tag} label={tag} />
+              </li>
+            )
+          })}
         </ul>
+        {hiddenOnPhones > 0 && (
+          <Button
+            variant="ghost"
+            className="-ml-3 h-11 font-mono text-xs text-muted-foreground sm:hidden"
+            aria-expanded={showAllTags}
+            aria-controls={tagListId}
+            onClick={() => setShowAllTags((value) => !value)}
+          >
+            {showAllTags ? 'Fewer tags' : `More tags (+${hiddenOnPhones})`}
+            <ChevronDown
+              data-icon="inline-end"
+              className={cn('transition-transform duration-(--dur-hover)', showAllTags && 'rotate-180')}
+            />
+          </Button>
+        )}
       </nav>
 
       <p className="sr-only" role="status">

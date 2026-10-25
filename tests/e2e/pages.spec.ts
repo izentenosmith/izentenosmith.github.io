@@ -24,10 +24,16 @@ for (const colorScheme of ['light', 'dark'] as const) {
   })
 }
 
-test('unknown routes show the not-found page', async ({ page }) => {
-  await page.goto('/no-such-page')
-  await expect(page.getByRole('heading', { level: 1, name: 'Page not found' })).toBeVisible()
-  await expect(page).toHaveTitle(/Page not found/)
+test.describe('unknown routes', () => {
+  // GitHub Pages answers unknown paths with a real 404 (serving 404.html), which
+  // Chrome logs as a failed resource load. That's the correct status, not a bug.
+  test.use({ allowedConsoleErrors: [/status of 404/] })
+
+  test('show the not-found page', async ({ page }) => {
+    await page.goto('/no-such-page')
+    await expect(page.getByRole('heading', { level: 1, name: 'Page not found' })).toBeVisible()
+    await expect(page).toHaveTitle(/Page not found/)
+  })
 })
 
 test('every route serves its own link-preview tags', async ({ request }) => {

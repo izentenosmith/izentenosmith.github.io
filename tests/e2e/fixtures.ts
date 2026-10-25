@@ -1,12 +1,19 @@
 import { test as base, expect } from '@playwright/test'
 
-/** Fails any test whose page logs a console error or throws. */
-export const test = base.extend<{ consoleErrors: string[] }>({
+/**
+ * Fails any test whose page logs a console error or throws. Tests can allow
+ * specific, expected errors with `test.use({ allowedConsoleErrors: [...] })`.
+ */
+export const test = base.extend<{ consoleErrors: string[]; allowedConsoleErrors: RegExp[] }>({
+  allowedConsoleErrors: [[], { option: true }],
   consoleErrors: [
-    async ({ page }, use) => {
+    async ({ page, allowedConsoleErrors }, use) => {
       const errors: string[] = []
       page.on('console', (message) => {
-        if (message.type() === 'error') errors.push(message.text())
+        const text = message.text()
+        if (message.type() === 'error' && !allowedConsoleErrors.some((pattern) => pattern.test(text))) {
+          errors.push(text)
+        }
       })
       page.on('pageerror', (error) => errors.push(error.message))
       await use(errors)
