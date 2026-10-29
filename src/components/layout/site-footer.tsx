@@ -1,4 +1,4 @@
-import { Mail, Rss } from 'lucide-react'
+import { Mail } from 'lucide-react'
 import { Link } from 'react-router'
 import { GithubIcon, LinkedinIcon } from '@/components/brand-icons'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,6 @@ const links = [
   { href: `mailto:${profile.email}`, label: 'Email', icon: Mail },
   { href: profile.links.linkedin, label: 'LinkedIn', icon: LinkedinIcon },
   { href: profile.links.github, label: 'GitHub', icon: GithubIcon },
-  { href: '/rss.xml', label: 'RSS feed', icon: Rss },
 ]
 
 export function SiteFooter() {
