@@ -39,7 +39,9 @@ export function ContactPage() {
   usePageMeta(staticPages[3])
 
   return (
-    <div className="grid items-start gap-12 lg:grid-cols-12">
+    // grid-cols-1 (minmax(0, 1fr)) on phones: an implicit auto track would grow to fit the
+    // longest channel value and push the page wider than the screen.
+    <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-12">
       <div className="space-y-10 lg:col-span-7">
         <header className="space-y-4">
           <h1 className="animate-enter font-heading text-h1 font-semibold sm:text-display">Get in touch</h1>
