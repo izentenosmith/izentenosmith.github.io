@@ -36,6 +36,11 @@ export const staticPages: PageMeta[] = [
     title: `Contact — ${profile.name}`,
     description: `Get in touch with ${profile.name} by email, LinkedIn or GitHub.`,
   },
+  {
+    path: '/literature',
+    title: `Literature — ${profile.name}`,
+    description: 'Books and papers I have read and recommend, on software architecture, data and delivery.',
+  },
 ]
 
 export function postPageMeta(post: PostMeta): PageMeta {

@@ -30,6 +30,7 @@ export const routes = [
   { path: '/experience', heading: 'Experience', title: 'Experience' },
   { path: '/blog', heading: 'Blog', title: 'Blog' },
   { path: '/contact', heading: 'Get in touch', title: 'Contact' },
+  { path: '/literature', heading: 'Literature', title: 'Literature' },
   {
     path: '/blog/configurable-workflows-in-postgres',
     heading: 'Modeling configurable resolution workflows',
