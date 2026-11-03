@@ -1,15 +1,27 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, routes, test } from './fixtures.ts'
 
-for (const colorScheme of ['light', 'dark'] as const) {
-  test.describe(`${colorScheme} theme`, () => {
+for (const [siteTheme, colorScheme] of [
+  ['electric', 'light'],
+  ['electric', 'dark'],
+  ['old-money', 'light'],
+  ['old-money', 'dark'],
+] as const) {
+  test.describe(`${siteTheme} theme, ${colorScheme} mode`, () => {
     test.use({ colorScheme })
+    test.beforeEach(async ({ page }) => {
+      // Same key the theme menu writes (src/components/theme/theme-context.ts).
+      await page.addInitScript((value) => localStorage.setItem('site-theme', value), siteTheme)
+    })
 
     for (const { path, heading } of routes) {
       test(`${path} renders and passes axe`, async ({ page }) => {
         await page.goto(path)
         await expect(page.getByRole('heading', { level: 1 })).toContainText(heading)
         await expect(page.locator('html')).toHaveClass(colorScheme === 'dark' ? /dark/ : /^(?!.*dark)/)
+        if (siteTheme === 'old-money') {
+          await expect(page.locator('html')).toHaveAttribute('data-theme', siteTheme)
+        }
         // Let entrance animations settle so axe measures final colors.
         await page.waitForTimeout(600)
 
@@ -52,9 +64,11 @@ test('feeds and icons are published', async ({ request }) => {
   for (const asset of [
     '/rss.xml',
     '/sitemap.xml',
+    '/favicon-32.png',
+    '/icons/old-money-32.png',
+    '/icons/old-money-apple-touch.png',
     '/robots.txt',
     '/og.png',
-    '/favicon.svg',
     '/site.webmanifest',
   ]) {
     expect((await request.get(asset)).ok(), asset).toBeTruthy()

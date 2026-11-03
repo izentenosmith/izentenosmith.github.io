@@ -52,7 +52,7 @@ export function ContactPage() {
             Open to conversations about backend architecture, platform and infrastructure work, or technical
             leadership roles. Email is the fastest way to reach me.
           </p>
-          <p className="flex items-center gap-2 font-mono text-sm text-muted-foreground">
+          <p className="flex items-center gap-2 font-label text-sm text-muted-foreground">
             <MapPin aria-hidden="true" className="size-3.5" />
             {profile.location} · {spokenLanguages}
           </p>
@@ -110,7 +110,7 @@ export function ContactPage() {
             className="aspect-[4/5]"
           />
         </div>
-        <figcaption className="mt-3 text-center font-mono text-xs text-muted-foreground">
+        <figcaption className="mt-3 text-center font-label text-xs text-muted-foreground">
           On call for good conversations
         </figcaption>
       </figure>

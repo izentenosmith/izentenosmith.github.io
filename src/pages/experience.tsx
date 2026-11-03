@@ -59,7 +59,7 @@ export function ExperiencePage() {
         </Reveal>
         <div className="grid gap-4 md:grid-cols-3">
           <InfoCard icon={GraduationCap} title={education.school}>
-            <p className="font-mono text-xs text-muted-foreground">
+            <p className="font-label text-xs text-muted-foreground">
               {education.period} · {education.location}
             </p>
             <p>{education.degree}</p>
@@ -140,7 +140,7 @@ function TimelineItem({ role }: { role: Role }) {
       </span>
       <div className="grid gap-6 lg:grid-cols-12 lg:gap-10">
         <header className="space-y-2 lg:sticky lg:top-24 lg:col-span-4 lg:self-start">
-          <p className="font-mono text-xs text-muted-foreground">{role.period}</p>
+          <p className="font-label text-xs text-muted-foreground">{role.period}</p>
           <h3 className="font-heading text-h3 font-semibold">
             {role.title} <span className="font-normal text-muted-foreground">at</span> {role.company}
           </h3>
@@ -152,7 +152,7 @@ function TimelineItem({ role }: { role: Role }) {
           <ul className="flex flex-wrap gap-1.5 pt-2" aria-label="Technologies">
             {role.tags.map((tag) => (
               <li key={tag}>
-                <Badge variant="outline" className="font-mono">
+                <Badge variant="outline" className="font-label">
                   {tag}
                 </Badge>
               </li>
@@ -212,7 +212,7 @@ function BulletGroup({ heading, bullets }: { heading?: string; bullets: string[]
   return (
     <div className="space-y-3">
       {heading && (
-        <h4 className="font-mono text-xs tracking-wider text-muted-foreground uppercase">{heading}</h4>
+        <h4 className="font-label text-xs tracking-wider text-muted-foreground uppercase">{heading}</h4>
       )}
       <ul className="space-y-3">
         {bullets.map((bullet) => (

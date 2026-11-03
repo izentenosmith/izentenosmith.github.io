@@ -68,7 +68,7 @@ export function BlogPage() {
         {hiddenOnPhones > 0 && (
           <Button
             variant="ghost"
-            className="-ml-3 h-11 font-mono text-xs text-muted-foreground sm:hidden"
+            className="-ml-3 h-11 font-label text-xs text-muted-foreground sm:hidden"
             aria-expanded={showAllTags}
             aria-controls={tagListId}
             onClick={() => setShowAllTags((value) => !value)}
@@ -107,7 +107,7 @@ function TagLink({ tag, active, label }: { tag: string | null; active: boolean; 
       preventScrollReset
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'inline-flex min-h-9 items-center rounded-full border px-3.5 font-mono text-xs transition-colors duration-(--dur-hover)',
+        'inline-flex min-h-9 items-center rounded-pill border px-3.5 font-label text-xs transition-colors duration-(--dur-hover)',
         active
           ? 'border-brand bg-brand text-primary-foreground'
           : 'bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground',

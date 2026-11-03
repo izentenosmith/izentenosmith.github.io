@@ -130,7 +130,7 @@ export function Node({ x, y, w, h, label, sub, tone = 'default', mono }: NodePro
           x={cx}
           y={cy + 13}
           textAnchor="middle"
-          className="fill-muted-foreground font-mono text-[10.5px]"
+          className="fill-muted-foreground font-label text-[10.5px]"
         >
           {sub}
         </text>
@@ -156,7 +156,7 @@ export function Group({ x, y, w, h, label, tone = 'default' }: GroupProps) {
       <text
         x={x + 12}
         y={y + 20}
-        className="fill-muted-foreground font-mono text-[11px] tracking-wider uppercase"
+        className="fill-muted-foreground font-label text-[11px] tracking-wider uppercase"
       >
         {label}
       </text>
@@ -209,7 +209,7 @@ export function EdgeLabel({ x, y, children }: { x: number; y: number; children: 
   return (
     <g>
       <rect x={x - width / 2} y={y - 10} width={width} height={18} rx={4} className="fill-card" />
-      <text x={x} y={y + 3} textAnchor="middle" className="fill-muted-foreground font-mono text-[10.5px]">
+      <text x={x} y={y + 3} textAnchor="middle" className="fill-muted-foreground font-label text-[10.5px]">
         {children}
       </text>
     </g>

@@ -12,7 +12,7 @@ export function CatalogToInstanceDiagram() {
         x={110}
         y={30}
         textAnchor="middle"
-        className="fill-muted-foreground font-mono text-[11px] tracking-wider uppercase"
+        className="fill-muted-foreground font-label text-[11px] tracking-wider uppercase"
       >
         Catalog
       </text>
@@ -20,7 +20,7 @@ export function CatalogToInstanceDiagram() {
         x={380}
         y={30}
         textAnchor="middle"
-        className="fill-muted-foreground font-mono text-[11px] tracking-wider uppercase"
+        className="fill-muted-foreground font-label text-[11px] tracking-wider uppercase"
       >
         Configuration
       </text>
@@ -28,7 +28,7 @@ export function CatalogToInstanceDiagram() {
         x={650}
         y={30}
         textAnchor="middle"
-        className="fill-muted-foreground font-mono text-[11px] tracking-wider uppercase"
+        className="fill-muted-foreground font-label text-[11px] tracking-wider uppercase"
       >
         Instance
       </text>

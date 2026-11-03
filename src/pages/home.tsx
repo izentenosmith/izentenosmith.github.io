@@ -30,7 +30,7 @@ export function HomePage() {
         <div className="space-y-6 lg:col-span-7">
           <p
             style={enter(0)}
-            className="inline-flex animate-enter items-center gap-2 rounded-full border bg-card/70 px-3 py-1 font-mono text-xs text-muted-foreground backdrop-blur"
+            className="inline-flex animate-enter items-center gap-2 rounded-pill border bg-card/70 px-3 py-1 font-label text-xs text-muted-foreground backdrop-blur"
           >
             <span aria-hidden="true" className="size-2 rounded-full bg-signal" />
             {profile.title}
@@ -66,7 +66,7 @@ export function HomePage() {
           <div style={enter(4)} className="flex animate-enter flex-wrap gap-3 pt-2">
             <Button
               size="lg"
-              className="h-11 px-4 shadow-[0_10px_30px_-10px_var(--brand)] transition-shadow hover:shadow-[0_14px_36px_-10px_var(--brand)]"
+              className="h-11 px-4 shadow-[0_10px_30px_-10px_var(--glow)] transition-shadow hover:shadow-[0_14px_36px_-10px_var(--glow)]"
               asChild
             >
               <Link to="/experience" viewTransition>
@@ -91,9 +91,9 @@ export function HomePage() {
           style={enter(2)}
           className="relative mx-auto w-full max-w-sm animate-enter lg:col-span-5 lg:max-w-none"
         >
-          {/* A thin electric-blue gradient frame around the photo. */}
-          <div className="rounded-[1.4rem] bg-linear-to-br from-brand/60 via-border to-border p-px shadow-[0_30px_80px_-30px_var(--brand)]">
-            <div className="overflow-hidden rounded-[calc(1.4rem-1px)] bg-card">
+          {/* A thin gradient frame in the brand colour (electric blue, or bronze for old money). */}
+          <div className="rounded-[calc(var(--radius)*2.8)] bg-linear-to-br from-brand/60 via-border to-border p-px shadow-[0_30px_80px_-30px_var(--glow)]">
+            <div className="overflow-hidden rounded-[calc(var(--radius)*2.8-1px)] bg-card">
               <Picture
                 picture={images.portrait.picture}
                 alt={images.portrait.alt}
@@ -103,7 +103,7 @@ export function HomePage() {
               />
             </div>
           </div>
-          <figcaption className="absolute bottom-3 left-3 rounded-full border bg-background/85 px-2.5 py-1 font-mono text-xs backdrop-blur">
+          <figcaption className="absolute bottom-3 left-3 rounded-pill border bg-background/85 px-2.5 py-1 font-label text-xs backdrop-blur">
             <span className="text-brand">$</span> whoami
           </figcaption>
         </figure>
@@ -121,7 +121,7 @@ export function HomePage() {
             <div className="space-y-4">
               <Eyebrow>Now</Eyebrow>
               <div className="space-y-1">
-                <p className="font-mono text-xs text-muted-foreground">{currentRole.period}</p>
+                <p className="font-label text-xs text-muted-foreground">{currentRole.period}</p>
                 <h3 className="font-heading text-h2 font-semibold">
                   {currentRole.title} <span className="font-normal text-muted-foreground">at</span>{' '}
                   {currentRole.company}
@@ -131,7 +131,7 @@ export function HomePage() {
               <ul className="flex flex-wrap gap-1.5" aria-label="Technologies">
                 {currentRole.tags.slice(0, 6).map((tag) => (
                   <li key={tag}>
-                    <Badge variant="outline" className="font-mono">
+                    <Badge variant="outline" className="font-label">
                       {tag}
                     </Badge>
                   </li>
@@ -157,7 +157,7 @@ export function HomePage() {
             >
               <CountUp
                 value={value}
-                className="block font-mono text-h2 font-semibold text-metric sm:text-h1"
+                className="block font-label text-h2 font-semibold text-metric sm:text-h1"
               />
               <p className="text-sm text-pretty text-muted-foreground">{label}</p>
             </li>
@@ -213,7 +213,7 @@ export function HomePage() {
           {/* A soft electric-blue glow in the corner, echoing the hero. */}
           <div
             aria-hidden="true"
-            className="absolute -top-40 -right-40 -z-10 size-[28rem] bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--brand)_22%,transparent),transparent)]"
+            className="absolute -top-40 -right-40 -z-10 size-[28rem] bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--glow)_22%,transparent),transparent)]"
           />
           <div className="space-y-3 lg:col-span-8">
             <Eyebrow>Contact</Eyebrow>
@@ -226,7 +226,7 @@ export function HomePage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3 lg:col-span-4 lg:justify-end">
-            <Button size="lg" className="h-11 px-4 shadow-[0_10px_30px_-10px_var(--brand)]" asChild>
+            <Button size="lg" className="h-11 px-4 shadow-[0_10px_30px_-10px_var(--glow)]" asChild>
               <a href={`mailto:${profile.email}`}>
                 <Mail data-icon="inline-start" />
                 Email me
