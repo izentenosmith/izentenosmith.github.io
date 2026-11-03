@@ -2,7 +2,6 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
@@ -13,11 +12,14 @@
     <!-- head:start -->
     <!-- head:end -->
     <script>
-      // Set the theme before first paint so dark mode never flashes light.
+      // Set the site theme and mode before first paint so neither flashes.
+      // Keys and values match src/components/theme/theme-context.ts.
       try {
-        const stored = localStorage.getItem('theme')
-        const dark = stored ? stored === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches
-        document.documentElement.classList.toggle('dark', dark)
+        const root = document.documentElement
+        if (localStorage.getItem('site-theme') === 'old-money') root.dataset.theme = 'old-money'
+        const mode = localStorage.getItem('theme')
+        const dark = mode ? mode === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches
+        root.classList.toggle('dark', dark)
       } catch {}
     </script>
   </head>

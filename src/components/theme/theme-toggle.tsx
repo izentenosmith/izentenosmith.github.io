@@ -1,23 +1,31 @@
-import { Monitor, Moon, Sun } from 'lucide-react'
+import { Landmark, Monitor, Moon, Sun, Zap } from 'lucide-react'
 import { useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useTheme, type Theme } from './theme-context'
+import { useTheme, type Mode, type SiteTheme } from './theme-context'
 
-const options: { value: Theme; label: string; icon: typeof Sun }[] = [
+const themeOptions: { value: SiteTheme; label: string; icon: typeof Sun }[] = [
+  { value: 'electric', label: 'Electric', icon: Zap },
+  { value: 'old-money', label: 'Old money', icon: Landmark },
+]
+
+const modeOptions: { value: Mode; label: string; icon: typeof Sun }[] = [
   { value: 'light', label: 'Light', icon: Sun },
   { value: 'dark', label: 'Dark', icon: Moon },
   { value: 'system', label: 'System', icon: Monitor },
 ]
 
 /**
- * Switches theme with the new one spreading in a circle from the toggle,
+ * Switches theme or mode with the new look spreading in a circle from the toggle,
  * using the View Transitions API. Falls back to an instant switch when the
  * browser lacks the API or the user prefers reduced motion.
  */
@@ -51,7 +59,7 @@ function switchWithReveal(apply: () => void, origin: HTMLElement | null) {
 }
 
 export function ThemeToggle() {
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme, mode, setMode } = useTheme()
   const triggerRef = useRef<HTMLButtonElement>(null)
 
   return (
@@ -68,18 +76,38 @@ export function ThemeToggle() {
           <Moon className="absolute size-4 scale-0 rotate-90 transition-transform duration-(--dur-enter) dark:scale-100 dark:rotate-0" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuRadioGroup
-          value={theme}
-          onValueChange={(value) => switchWithReveal(() => setTheme(value as Theme), triggerRef.current)}
-        >
-          {options.map(({ value, label, icon: Icon }) => (
-            <DropdownMenuRadioItem key={value} value={value}>
-              <Icon />
-              {label}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
+      <DropdownMenuContent align="end" className="w-40">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Theme</DropdownMenuLabel>
+          <DropdownMenuRadioGroup
+            value={theme}
+            onValueChange={(value) =>
+              switchWithReveal(() => setTheme(value as SiteTheme), triggerRef.current)
+            }
+          >
+            {themeOptions.map(({ value, label, icon: Icon }) => (
+              <DropdownMenuRadioItem key={value} value={value}>
+                <Icon />
+                {label}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Mode</DropdownMenuLabel>
+          <DropdownMenuRadioGroup
+            value={mode}
+            onValueChange={(value) => switchWithReveal(() => setMode(value as Mode), triggerRef.current)}
+          >
+            {modeOptions.map(({ value, label, icon: Icon }) => (
+              <DropdownMenuRadioItem key={value} value={value}>
+                <Icon />
+                {label}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )

@@ -1,12 +1,23 @@
 import { expect, test } from './fixtures.ts'
 
-test('theme choice applies and survives a reload', async ({ page }) => {
+test('theme and mode choices apply and survive a reload', async ({ page }) => {
   await page.goto('/')
+  const html = page.locator('html')
   await page.getByRole('button', { name: 'Change theme' }).click()
   await page.getByRole('menuitemradio', { name: 'Dark' }).click()
-  await expect(page.locator('html')).toHaveClass(/dark/)
+  await expect(html).toHaveClass(/dark/)
+  await page.getByRole('button', { name: 'Change theme' }).click()
+  await page.getByRole('menuitemradio', { name: 'Old money' }).click()
+  await expect(html).toHaveAttribute('data-theme', 'old-money')
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/icons/old-money-32.png')
+
   await page.reload()
-  await expect(page.locator('html')).toHaveClass(/dark/)
+  await expect(html).toHaveClass(/dark/)
+  await expect(html).toHaveAttribute('data-theme', 'old-money')
+
+  await page.getByRole('button', { name: 'Change theme' }).click()
+  await page.getByRole('menuitemradio', { name: 'Electric' }).click()
+  await expect(html).not.toHaveAttribute('data-theme')
 })
 
 test('blog tag filter narrows the list and lives in the URL', async ({ page }) => {
