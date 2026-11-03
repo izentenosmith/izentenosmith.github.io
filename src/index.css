@@ -3,17 +3,32 @@
 @import 'shadcn/tailwind.css';
 @import '@fontsource-variable/geist';
 @import '@fontsource-variable/geist-mono';
+/* Old money's faces. A browser only downloads a font a rendered element uses,
+   so visitors on the electric theme never fetch these. */
+@import '@fontsource-variable/playfair-display';
+@import '@fontsource-variable/source-serif-4';
 @plugin '@tailwindcss/typography';
 
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design tokens. Three accents, each with one job:
- *   brand  — electric blue: links, focus, active nav, primary actions
- *   signal — green: health and status only
- *   metric — amber: numbers only
- * Every text pairing below is at least 4.5:1 in its theme.
+ * Design tokens, in two site themes × light/dark. `data-theme` on <html> picks
+ * the theme (none = electric) and the `.dark` class picks the mode; both are set
+ * before first paint by the script in index.html. Components only use tokens,
+ * so a theme is defined entirely here.
+ *
+ * Three accents, each with one job:
+ *   brand  — links, focus, active nav, primary actions
+ *   signal — health and status only
+ *   metric — numbers only
+ * Every text pairing below is at least 4.5:1 in its theme and mode.
+ *
+ * Beyond colour, each theme sets its faces (--display-face, --body-face,
+ * --label-face), the radius of pill shapes (--pill-radius), the glow behind
+ * primary actions (--glow) and the floating header's shadow (--float-shadow).
  */
+
+/* Electric (default): Geist, electric blue, glass and glow. */
 :root {
   color-scheme: light;
   --background: #fafafa;
@@ -38,6 +53,13 @@
   --signal: #047857;
   --metric: #b45309;
   --radius: 0.5rem;
+
+  --display-face: 'Geist Variable', sans-serif;
+  --body-face: 'Geist Variable', sans-serif;
+  --label-face: 'Geist Mono Variable', monospace;
+  --pill-radius: calc(infinity * 1px);
+  --glow: var(--brand);
+  --float-shadow: 0 8px 30px -12px rgb(0 0 0 / 0.25);
 
   --dur-press: 100ms;
   --dur-hover: 150ms;
@@ -72,9 +94,68 @@
   --metric: #fbbf24;
 }
 
+/* Old money: serif faces, ivory and ink, bronze from the emblem, square corners, no glow. */
+:root[data-theme='old-money'] {
+  --background: #f6f1e6;
+  --foreground: #1f1b16;
+  --card: #fdfaf3;
+  --card-foreground: #1f1b16;
+  --popover: #fdfaf3;
+  --popover-foreground: #1f1b16;
+  --primary: #6b4f22;
+  --primary-foreground: #fdfaf3;
+  --secondary: #ece5d6;
+  --secondary-foreground: #1f1b16;
+  --muted: #ece5d6;
+  --muted-foreground: #5c5346;
+  --accent: #e6dcc8;
+  --accent-foreground: #1f1b16;
+  --destructive: #a3302a;
+  --border: #dcd2bf;
+  --input: #cfc3ac;
+  --ring: #6b4f22;
+  --brand: #6b4f22;
+  --signal: #2f5d46;
+  --metric: #7a2e2a;
+  --radius: 0.125rem;
+
+  --display-face: 'Playfair Display Variable', Georgia, serif;
+  --body-face: 'Source Serif 4 Variable', Georgia, serif;
+  --label-face: 'Source Serif 4 Variable', Georgia, serif;
+  --pill-radius: 0.125rem;
+  --glow: transparent;
+  --float-shadow: 0 1px 0 rgb(0 0 0 / 0.04);
+}
+
+:root[data-theme='old-money'].dark {
+  --background: #13110e;
+  --foreground: #efe7d6;
+  --card: #1b1814;
+  --card-foreground: #efe7d6;
+  --popover: #201c17;
+  --popover-foreground: #efe7d6;
+  --primary: #c8a467;
+  --primary-foreground: #13110e;
+  --secondary: #262019;
+  --secondary-foreground: #efe7d6;
+  --muted: #262019;
+  --muted-foreground: #b0a58f;
+  --accent: #2e271f;
+  --accent-foreground: #efe7d6;
+  --destructive: #e08a7e;
+  --border: #342d24;
+  --input: #4a4134;
+  --ring: #c8a467;
+  --brand: #c8a467;
+  --signal: #8fbf9f;
+  --metric: #d99484;
+}
+
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: 'Geist Variable', sans-serif;
+  --font-heading: var(--display-face);
+  --font-sans: var(--body-face);
+  /* Dates, tags and small labels; real code keeps --font-mono in every theme. */
+  --font-label: var(--label-face);
   --font-mono: 'Geist Mono Variable', monospace;
 
   --color-brand: var(--brand);
@@ -106,6 +187,7 @@
   --radius-2xl: calc(var(--radius) * 2);
   --radius-3xl: calc(var(--radius) * 2.5);
   --radius-4xl: calc(var(--radius) * 3);
+  --radius-pill: var(--pill-radius);
 }
 
 /* Type scale: display → h3, plus the 17px reading size used by posts. */
@@ -363,4 +445,55 @@
 }
 .spotlight:hover::before {
   opacity: 1;
+}
+
+/*
+ * Old money keeps the page still and flat: no dot grid or drifting aurora, just
+ * a faint warm light at the top; no cursor glow on cards; a solid header
+ * instead of frosted glass; and long-form text in the theme's ink, not gray.
+ */
+:root[data-theme='old-money'] .aurora {
+  background-image: none;
+}
+:root[data-theme='old-money'] .aurora::before {
+  animation: none;
+  opacity: 0.1;
+}
+:root[data-theme='old-money'] .aurora::after,
+:root[data-theme='old-money'] .spotlight::before {
+  display: none;
+}
+:root[data-theme='old-money'] .site-header {
+  background-color: var(--background);
+  backdrop-filter: none;
+}
+:root[data-theme='old-money'] .prose {
+  --tw-prose-body: color-mix(in oklab, var(--foreground) 88%, var(--background));
+  --tw-prose-headings: var(--foreground);
+  --tw-prose-lead: var(--muted-foreground);
+  --tw-prose-links: var(--brand);
+  --tw-prose-bold: var(--foreground);
+  --tw-prose-counters: var(--muted-foreground);
+  --tw-prose-bullets: var(--border);
+  --tw-prose-hr: var(--border);
+  --tw-prose-quotes: var(--foreground);
+  --tw-prose-quote-borders: var(--brand);
+  --tw-prose-captions: var(--muted-foreground);
+  --tw-prose-code: var(--foreground);
+  --tw-prose-th-borders: var(--border);
+  --tw-prose-td-borders: var(--border);
+  --tw-prose-invert-body: color-mix(in oklab, var(--foreground) 88%, var(--background));
+  --tw-prose-invert-headings: var(--foreground);
+  --tw-prose-invert-lead: var(--muted-foreground);
+  --tw-prose-invert-links: var(--brand);
+  --tw-prose-invert-bold: var(--foreground);
+  --tw-prose-invert-counters: var(--muted-foreground);
+  --tw-prose-invert-bullets: var(--border);
+  --tw-prose-invert-hr: var(--border);
+  --tw-prose-invert-quotes: var(--foreground);
+  --tw-prose-invert-quote-borders: var(--brand);
+  --tw-prose-invert-captions: var(--muted-foreground);
+  --tw-prose-invert-code: var(--foreground);
+  --tw-prose-invert-th-borders: var(--border);
+  --tw-prose-invert-td-borders: var(--border);
 }

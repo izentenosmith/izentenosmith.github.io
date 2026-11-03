@@ -17,7 +17,7 @@ export function NotFoundPage() {
   return (
     <section className="grid items-center gap-10 md:grid-cols-12">
       <div className="space-y-5 md:col-span-7">
-        <p className="font-mono text-sm text-muted-foreground">
+        <p className="font-label text-sm text-muted-foreground">
           <span className="text-metric">404</span> · {pathname}
         </p>
         <h1 className="animate-enter font-heading text-h1 font-semibold">Page not found</h1>

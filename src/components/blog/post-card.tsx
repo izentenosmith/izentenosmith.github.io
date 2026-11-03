@@ -8,7 +8,7 @@ import { postTitleTransition } from '@/lib/view-transitions'
 
 export function PostMetaLine({ post }: { post: PostMeta }) {
   return (
-    <p className="font-mono text-xs text-muted-foreground">
+    <p className="font-label text-xs text-muted-foreground">
       <time dateTime={post.date}>{formatPostDate(post.date)}</time> · {post.readingMinutes} min read
     </p>
   )
@@ -19,7 +19,7 @@ export function PostTags({ tags, className }: { tags: string[]; className?: stri
     <ul className={cn('flex flex-wrap gap-1.5', className)} aria-label="Tags">
       {tags.map((tag) => (
         <li key={tag}>
-          <Badge variant="outline" className="font-mono">
+          <Badge variant="outline" className="font-label">
             {tag}
           </Badge>
         </li>
@@ -43,7 +43,7 @@ export function PostCard({ post, headingLevel = 'h3', featured = false }: PostCa
         <div className="flex items-center justify-between gap-3">
           <PostMetaLine post={post} />
           {featured && (
-            <Badge className="bg-brand/10 font-mono text-brand" variant="secondary">
+            <Badge className="bg-brand/10 font-label text-brand" variant="secondary">
               Featured
             </Badge>
           )}

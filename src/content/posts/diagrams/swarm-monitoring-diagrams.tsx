@@ -12,7 +12,7 @@ export function SwarmMonitoringDiagram() {
         x={110}
         y={24}
         textAnchor="middle"
-        className="fill-muted-foreground font-mono text-[11px] tracking-wider uppercase"
+        className="fill-muted-foreground font-label text-[11px] tracking-wider uppercase"
       >
         Sources
       </text>
@@ -20,7 +20,7 @@ export function SwarmMonitoringDiagram() {
         x={350}
         y={24}
         textAnchor="middle"
-        className="fill-muted-foreground font-mono text-[11px] tracking-wider uppercase"
+        className="fill-muted-foreground font-label text-[11px] tracking-wider uppercase"
       >
         Collect
       </text>
@@ -28,7 +28,7 @@ export function SwarmMonitoringDiagram() {
         x={570}
         y={24}
         textAnchor="middle"
-        className="fill-muted-foreground font-mono text-[11px] tracking-wider uppercase"
+        className="fill-muted-foreground font-label text-[11px] tracking-wider uppercase"
       >
         Store
       </text>
@@ -36,7 +36,7 @@ export function SwarmMonitoringDiagram() {
         x={725}
         y={24}
         textAnchor="middle"
-        className="fill-muted-foreground font-mono text-[11px] tracking-wider uppercase"
+        className="fill-muted-foreground font-label text-[11px] tracking-wider uppercase"
       >
         Use
       </text>

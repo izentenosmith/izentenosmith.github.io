@@ -6,7 +6,7 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
   return (
     <p
       className={cn(
-        'inline-flex items-center gap-2 rounded-full border bg-card/70 px-3 py-1 font-mono text-xs tracking-wider text-muted-foreground uppercase backdrop-blur',
+        'inline-flex items-center gap-2 rounded-pill border bg-card/70 px-3 py-1 font-label text-xs tracking-wider text-muted-foreground uppercase backdrop-blur',
         className,
       )}
     >

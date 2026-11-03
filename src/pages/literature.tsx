@@ -42,15 +42,15 @@ export function LiteraturePage() {
         }
         className="space-y-8"
       >
-        <Tabs.List aria-label="Reading list" className="inline-flex gap-1 rounded-full border bg-card p-1">
+        <Tabs.List aria-label="Reading list" className="inline-flex gap-1 rounded-pill border bg-card p-1">
           {tabs.map(({ value, total }) => (
             <Tabs.Trigger
               key={value}
               value={value}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-full px-4 font-mono text-xs text-muted-foreground capitalize transition-colors duration-(--dur-hover) hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-[state=active]:bg-brand data-[state=active]:text-primary-foreground"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-pill px-4 font-label text-xs text-muted-foreground capitalize transition-colors duration-(--dur-hover) hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-[state=active]:bg-brand data-[state=active]:text-primary-foreground"
             >
               {value}
-              <span aria-hidden="true" className="opacity-70">
+              <span aria-hidden="true" className="tabular-nums">
                 {total}
               </span>
             </Tabs.Trigger>
@@ -84,7 +84,7 @@ export function LiteraturePage() {
 function Section({ label, children }: { label: string; children: ReactNode }) {
   return (
     <section className="space-y-4">
-      <h2 className="font-mono text-xs tracking-wider text-muted-foreground uppercase">{label}</h2>
+      <h2 className="font-label text-xs tracking-wider text-muted-foreground uppercase">{label}</h2>
       <ul className="grid gap-3 md:grid-cols-2">{children}</ul>
     </section>
   )
@@ -108,7 +108,7 @@ function PaperItem({ paper }: { paper: Paper }) {
   return (
     <li className="group spotlight flex interactive-card items-start gap-4 rounded-2xl border bg-card p-4 hover:border-brand/40 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring">
       <div className="min-w-0 flex-1 space-y-1">
-        <p className="font-mono text-xs text-muted-foreground">
+        <p className="font-label text-xs text-muted-foreground">
           {paper.source}
           {paper.year && ` · ${paper.year}`}
         </p>

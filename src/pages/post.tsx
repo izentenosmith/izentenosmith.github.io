@@ -102,7 +102,9 @@ export function PostPage() {
 
           <aside className="hidden xl:block">
             <nav aria-label="On this page" className="sticky top-24 space-y-3">
-              <p className="font-mono text-xs tracking-wider text-muted-foreground uppercase">On this page</p>
+              <p className="font-label text-xs tracking-wider text-muted-foreground uppercase">
+                On this page
+              </p>
               <TableOfContents headings={post.headings} />
             </nav>
           </aside>
@@ -166,7 +168,7 @@ function PagerLink({ post, direction }: { post: PostMeta; direction: 'previous' 
       className="group flex interactive-card flex-col gap-1 rounded-xl border bg-card p-4 hover:border-brand/50 sm:data-[next=true]:text-right"
       data-next={isNext}
     >
-      <span className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground sm:group-data-[next=true]:justify-end">
+      <span className="flex items-center gap-1.5 font-label text-xs text-muted-foreground sm:group-data-[next=true]:justify-end">
         {!isNext && <ArrowLeft aria-hidden="true" className="size-3.5" />}
         {isNext ? 'Next post' : 'Previous post'}
         {isNext && <ArrowRight aria-hidden="true" className="size-3.5" />}

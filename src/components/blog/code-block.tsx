@@ -34,7 +34,7 @@ export function CodeBlock({
   return (
     <figure className="not-prose group/code my-6 overflow-hidden rounded-xl border bg-card">
       <figcaption className="flex min-h-11 items-center justify-between gap-3 border-b bg-muted/60 pr-1.5 pl-4">
-        <span className="truncate font-mono text-xs text-muted-foreground">{label ?? 'Code'}</span>
+        <span className="truncate font-label text-xs text-muted-foreground">{label ?? 'Code'}</span>
         <CopyButton
           value={() => preRef.current?.innerText ?? ''}
           label={`Copy ${label ?? 'code'}`}
