@@ -53,6 +53,23 @@ test('long roles expand and collapse', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Performance', level: 4 })).toBeVisible()
 })
 
+test('skill cards open onto their folder and the tabs live in the URL', async ({ page }) => {
+  await page.goto('/skills')
+  const card = page
+    .locator('details')
+    .filter({ has: page.getByRole('heading', { name: 'tdd', exact: true }) })
+  await expect(card.getByText('good-tests.md')).toBeHidden()
+  await card.getByRole('heading', { name: 'tdd', exact: true }).click()
+  await expect(card.getByText('good-tests.md')).toBeVisible()
+  await expect(card.getByText('A Philosophy of Software Design')).toBeVisible()
+
+  await page.getByRole('tab', { name: /^harnesses/ }).click()
+  await expect(page).toHaveURL(/\?tab=harnesses$/)
+  await expect(page.getByRole('heading', { name: 'The closing loop', level: 3 })).toBeVisible()
+  await page.reload()
+  await expect(page.getByRole('tab', { name: /^harnesses/ })).toHaveAttribute('aria-selected', 'true')
+})
+
 test('mobile menu navigates and closes', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'mobile layout only')
   await page.goto('/')

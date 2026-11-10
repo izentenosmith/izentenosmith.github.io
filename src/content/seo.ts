@@ -37,9 +37,10 @@ export const staticPages: PageMeta[] = [
     description: `Get in touch with ${profile.name} by email, LinkedIn or GitHub.`,
   },
   {
-    path: '/literature',
-    title: `Literature — ${profile.name}`,
-    description: 'Books and papers I have read and recommend, on software architecture, data and delivery.',
+    path: '/skills',
+    title: `Skills — ${profile.name}`,
+    description:
+      'The agent skills I use at work: what each one does, what is in its folder, and how it scores on evals.',
   },
 ]
 
