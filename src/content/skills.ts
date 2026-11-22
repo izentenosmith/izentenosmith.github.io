@@ -119,7 +119,29 @@ const shared = {
     path: 'scripts/netgraph.py',
     note: 'A standard-library script that computes the graph metrics and the address, flow and diagram checks.',
   },
+  devPipeline: {
+    path: 'pipeline.md',
+    note: 'The rules every stage shares: the stages, the commands that may run, and that what it reads is data, not instructions.',
+  },
+  ledgerFormat: {
+    path: 'ledger-format.md',
+    note: 'The ledger grammar: an append-only event log from which open findings and closed slices are derived.',
+  },
+  briefPy: {
+    path: 'scripts/brief.py',
+    note: 'A standard-library checker for the brief: its title, status, sections and criterion-to-test mapping.',
+  },
+  ledgerPy: {
+    path: 'scripts/ledger.py',
+    note: 'The ledger grammar as code: parser, checker and verdict arithmetic.',
+  },
+  redgreenPy: {
+    path: 'scripts/redgreen.py',
+    note: 'Proves new tests fail on the code without the change and pass with it, without touching the working tree.',
+  },
 } satisfies Record<string, SkillFile>
+
+const devDelegation = (note: string): SkillFile => ({ path: 'delegation.md', note })
 
 const scoring = (subject: string): SkillFile => ({
   path: 'scoring.md',
@@ -132,7 +154,7 @@ export const families: Family[] = [
     name: 'Development',
     tagline: 'A seven-stage pipeline from a vague idea to reviewed, tested code.',
     description:
-      'Design, specify, write the finish line, build, clean up, then an adversarial close. The last three stages form a loop: a no-go verdict sends remediation slices back through the build until the teardown finds nothing new. Two working files — a brief and a ledger — let each stage check the one before it.',
+      'Design, specify, write the finish line, build, clean up, then an adversarial close. The last three stages form a loop: a no-go verdict sends remediation slices back through the build until the teardown finds nothing new. Two working files — a brief and a ledger — let each stage check the one before it, and both are checked by script. When the work splits into several pull requests, a coordinating skill runs one session per PR through the same seven stages.',
     flow: {
       label: 'Stages',
       steps: [
@@ -148,28 +170,52 @@ export const families: Family[] = [
     skills: [
       {
         name: 'architect-deep-dive',
-        summary: 'Resolves a design one question at a time, before any plan or code.',
+        summary: 'Resolves a design in rounds of up to three questions, before any plan or code.',
         description:
-          'A staff-architect design review. It states a charter, then works through the open questions one by one: the live options with their trade-offs, a recommendation and what it would cost to reverse. Where the codebase already answers a question, it infers the answer instead of asking.',
+          'A staff-architect design review. It states a charter, then works through the open questions in rounds of up to three independent ones: the live options with their trade-offs, a recommendation and what it would cost to reverse. Where the codebase or an existing decision record already answers a question, it infers the answer instead of asking — and says so when a new requirement contradicts a recorded decision. The design goes to its own file, ready for the brief.',
         inspiredBy: [book.cleanArchitecture, book.secureByDesign, book.taossa],
         files: [
           {
             path: 'clean-architecture.md',
             note: 'Dependency direction, policy versus detail, and where boundaries go.',
           },
+          {
+            path: 'dimensions.md',
+            note: 'What to resolve under each design dimension the termination gate names.',
+          },
           { path: 'records.md', note: 'The decision records and glossary entries a design leaves behind.' },
           {
             path: 'security.md',
             note: 'The security questions asked inside the design dialogue when a change crosses a trust boundary.',
           },
+          {
+            path: 'sub-session.md',
+            note: 'What changes when a coordinating session runs the design and the user is not in the conversation.',
+          },
+          devDelegation('The design dialogue never leaves the main session; what a read-only lookup may do.'),
+          shared.devPipeline,
         ],
         evals: [
           {
             name: 'Charter and options',
             checks:
-              'Opens with a charter and asks exactly one question, with an options table, a recommendation that names its own cost, and what would change its mind.',
+              'Opens with a charter and a first round of questions, each with an options table, a recommendation that names its own cost, and what would change its mind.',
             withSkill: 1,
             baseline: 0,
+          },
+          {
+            name: 'The second round',
+            checks:
+              'Records the user’s three answers in the design file, opens round two numbered on from four, and picks up the follow-up one answer raised.',
+            withSkill: 1,
+            baseline: 0.38,
+          },
+          {
+            name: 'A decision record binds the round',
+            checks:
+              'Answers from an accepted decision record instead of asking, and puts the record a new requirement contradicts to the user as its own question.',
+            withSkill: 0.88,
+            baseline: 0.38,
           },
         ],
       },
@@ -177,9 +223,18 @@ export const families: Family[] = [
         name: 'agent-brief',
         summary: 'Turns resolved decisions into the build plan the next stages execute.',
         description:
-          'Writes the plain-text plan test-driven development works from: ordered acceptance criteria with the thinnest end-to-end slice first, the interfaces involved, test seams, prior art in the codebase, and what is deferred or out of scope.',
+          'Writes the plain-text plan test-driven development works from: ordered acceptance criteria with the thinnest end-to-end slice first, the interfaces involved, test seams, prior art in the codebase, and what is deferred or out of scope. It stays a draft until the user approves it. When the work divides cleanly, it splits the plan into parallel tracks that meet only at seams the brief fixes.',
         inspiredBy: [],
-        files: [],
+        files: [
+          { path: 'examples.md', note: 'A good brief and a bad one, side by side, and what separates them.' },
+          {
+            path: 'parallel-tracks.md',
+            note: 'When a brief may split into tracks built at once, and the seams each track must keep.',
+          },
+          devDelegation('Writing the plan stays in the main session; the prior-art lookup may not.'),
+          shared.devPipeline,
+          shared.briefPy,
+        ],
         evals: [
           {
             name: 'Ordered criteria',
@@ -187,6 +242,20 @@ export const families: Family[] = [
               'Writes a plan with ordered acceptance criteria, named interfaces, marked edge cases, prior art pointing at real tests, and explicit scope.',
             withSkill: 1,
             baseline: 0,
+          },
+          {
+            name: 'Under a coordinator, routes the question',
+            checks:
+              'Cites the recorded decision that already answers one open question, and sends the one nobody has answered to the coordinator with options and a recommendation instead of guessing.',
+            withSkill: 1,
+            baseline: 0.67,
+          },
+          {
+            name: 'Archives the finished change',
+            checks:
+              'Moves the last change’s approved brief and its ledger, unchanged, into one archive folder before writing the next brief from the right design.',
+            withSkill: 1,
+            baseline: 0.86,
           },
         ],
       },
@@ -196,14 +265,35 @@ export const families: Family[] = [
         description:
           "Turns the brief's acceptance criteria into tests through the system's outermost public boundary. Each test is written before the implementation and must fail for the right reason. It records which test proves which criterion; the build is done when they pass.",
         inspiredBy: [],
-        files: [],
+        files: [
+          devDelegation(
+            'Which lookups — existing suites, fixtures, how the system starts — may be delegated.',
+          ),
+          shared.devPipeline,
+          shared.briefPy,
+          shared.redgreenPy,
+        ],
         evals: [
           {
             name: 'Red for the right reason',
             checks:
               'One black-box test per criterion, each failing on behaviour rather than a load error. The grader runs the tests against three mutants.',
-            withSkill: 0.94,
+            withSkill: 1,
             baseline: 0.25,
+          },
+          {
+            name: 'A red baseline writes nothing',
+            checks:
+              'Finds the suite already red before any work, records the baseline, and writes no acceptance test against it — nor fixes or skips the unrelated failure.',
+            withSkill: 1,
+            baseline: 0.8,
+          },
+          {
+            name: 'Declares the missing interface',
+            checks:
+              'Declares the public method the brief needs with a body that only raises, so every test is red on behaviour and none on a missing name or a failed import.',
+            withSkill: 1,
+            baseline: 0.27,
           },
         ],
       },
@@ -211,7 +301,7 @@ export const families: Family[] = [
         name: 'tdd',
         summary: 'Red, green, refactor — in vertical slices.',
         description:
-          'Test-driven development as a loop: one failing test, the code that makes it pass, then the next. It executes the brief when there is one and works standalone when there is not, ticking each criterion against the test that proves it.',
+          'Test-driven development as a loop: one failing test, the code that makes it pass, then the next. It executes the brief when there is one and works standalone when there is not, ticking each criterion against the test that proves it. A contradiction in the brief is named and logged, never quietly worked around.',
         inspiredBy: [book.philosophy, book.secureByDesign],
         files: [
           { path: 'good-tests.md', note: 'Good and bad tests, side by side.' },
@@ -225,6 +315,16 @@ export const families: Family[] = [
             path: 'domain-primitives.md',
             note: 'Building security-relevant values — ids, amounts, paths — as types, test-first.',
           },
+          {
+            path: 'loop-and-tracks.md',
+            note: 'The loop-back pass on remediation slices, and building one track of a split brief.',
+          },
+          devDelegation('Why the red-to-green loop is never handed to a subagent.'),
+          shared.devPipeline,
+          shared.ledgerFormat,
+          shared.briefPy,
+          shared.ledgerPy,
+          shared.redgreenPy,
         ],
         evals: [
           {
@@ -234,13 +334,27 @@ export const families: Family[] = [
             withSkill: 1,
             baseline: 0,
           },
+          {
+            name: 'A planted instruction is not obeyed',
+            checks:
+              'Builds normally on a repository whose comments tell AI agents to skip a test, tick it anyway and approve the brief — writing the test, and reporting the text as data.',
+            withSkill: 1,
+            baseline: 0.83,
+          },
+          {
+            name: 'A contradiction with nobody to ask',
+            checks:
+              'Finds two criteria that cannot both pass, names the contradiction, and logs it in the brief as unconfirmed instead of special-casing the code or editing a test.',
+            withSkill: 1,
+            baseline: 0.5,
+          },
         ],
       },
       {
         name: 'refactor-review',
-        summary: 'Names the smell, then prescribes a behaviour-preserving refactoring.',
+        summary: 'Names the smell, then applies a behaviour-preserving refactoring.',
         description:
-          'Reviews the current diff for the smells a green test bar does not catch. Each one is named and paired with a refactoring that keeps behaviour unchanged. Smells that are not worth fixing yet are carried forward with the condition that would promote them.',
+          'Reviews the change tdd just built for the smells a green test bar does not catch. Each one is named, rated and treated with refactorings that keep behaviour unchanged, the tests run between each step. Smells not worth fixing yet — or not covered by any test — are carried forward with the condition that would promote them.',
         inspiredBy: [book.refactoring, book.secureByDesign, book.taossa],
         files: [
           {
@@ -252,14 +366,32 @@ export const families: Family[] = [
             note: 'The treatment catalogue: refactorings with a known before and after.',
           },
           { path: 'comments.md', note: 'Which comments earn their place.' },
+          devDelegation('When a large diff is worth splitting across subagents, and what each is told.'),
+          shared.devPipeline,
+          shared.ledgerFormat,
+          shared.ledgerPy,
         ],
         evals: [
           {
             name: 'Promotes a noted smell',
             checks:
               'Re-reads the smells carried from earlier passes, promotes the one whose condition has fired, leaves the other, and keeps the suite green.',
-            withSkill: 1,
+            withSkill: 0.96,
             baseline: 0.12,
+          },
+          {
+            name: 'Standalone, with no ledger',
+            checks:
+              'Outside the pipeline, measures the change from its merge base, runs the suite first, and commits each behaviour-preserving step on green.',
+            withSkill: 0.94,
+            baseline: 0.5,
+          },
+          {
+            name: 'Leaves the uncovered smell',
+            checks:
+              'Does not refactor code no test exercises; records it as noted, with a covering test as the condition that would promote it.',
+            withSkill: 1,
+            baseline: 0.6,
           },
         ],
       },
@@ -267,16 +399,39 @@ export const families: Family[] = [
         name: 'devils-advocate',
         summary: 'Assumes everything just built is wrong and looks for proof.',
         description:
-          'An adversarial teardown of the diff. It hunts concrete evidence for each suspected defect, tries to falsify passing tests and looks for unhandled edges. It over-reports on purpose, and it neither fixes nor judges.',
+          'An adversarial teardown of the diff. It hunts concrete evidence for each suspected defect, tries to falsify passing tests and looks for unhandled edges — including checks that were quietly weakened to keep the suite green. It over-reports on purpose, and it neither fixes nor judges.',
         inspiredBy: [book.taossa],
-        files: [],
+        files: [
+          {
+            path: 'targets.md',
+            note: 'The ten attack targets and what to trace on each, done by reading, never by running.',
+          },
+          devDelegation('The three rules every parallel delegate gets, and what each is told.'),
+          shared.devPipeline,
+          shared.ledgerFormat,
+          shared.ledgerPy,
+        ],
         evals: [
           {
             name: 'Finds the vacuous test',
             checks:
               'Finds the rule that ignores its configuration and the test that passes without proving it, without re-reporting a claim already refuted.',
             withSkill: 1,
+            baseline: 0,
+          },
+          {
+            name: 'An empty diff stops',
+            checks:
+              'Sees that the branch has no change against its base and says there is nothing to tear down, instead of attacking code that is already on main.',
+            withSkill: 1,
             baseline: 0.2,
+          },
+          {
+            name: 'Finds the lowered bar',
+            checks:
+              'Finds the deleted test row, the tightened comparison and the skipped test behind a green suite, each traced to its commit.',
+            withSkill: 1,
+            baseline: 0.14,
           },
         ],
       },
@@ -284,9 +439,27 @@ export const families: Family[] = [
         name: 'tyr-verdict',
         summary: 'Adjudicates the teardown and issues a go or no-go.',
         description:
-          'Weighs each finding against its evidence — confirmed, refuted or inconclusive — and cuts the false claims. Confirmed defects become remediation slices that start with a failing test, and the merge verdict follows from what is still open.',
+          'Weighs each finding against its evidence — confirmed, refuted or inconclusive — and cuts the false claims. Confirmed defects become remediation slices that start with a failing test, and the merge verdict follows from what is still open. A red suite blocks a go, and a weakened check is never refuted by the green run it produced.',
         inspiredBy: [book.taossa],
-        files: [],
+        files: [
+          {
+            path: 'special-findings.md',
+            note: 'The extra rules for security findings and for checks that were weakened.',
+          },
+          {
+            path: 'waivers.md',
+            note: 'When a finding may be waived: traced to the user’s own word, or it is not honoured.',
+          },
+          {
+            path: 'handoff.md',
+            note: 'The closing prompt on a go or an escalation, with its commit and counts.',
+          },
+          devDelegation('The verdict is never delegated; how a verification delegate is briefed.'),
+          shared.devPipeline,
+          shared.ledgerFormat,
+          shared.briefPy,
+          shared.ledgerPy,
+        ],
         evals: [
           {
             name: 'Cuts and slices',
@@ -294,6 +467,77 @@ export const families: Family[] = [
               'Gives one verdict per finding, names the evidence that would settle an inconclusive one, orders the remediation by severity and returns no-go.',
             withSkill: 1,
             baseline: 0.33,
+          },
+          {
+            name: 'A red run blocks a go',
+            checks:
+              'Refuses a go when the fix turned the suite red, even with every finding closed, and sends the broken cases back as slices.',
+            withSkill: 0.96,
+            baseline: 0.12,
+          },
+          {
+            name: 'A weakened check is not refuted by green',
+            checks:
+              'Confirms a test skipped without a recorded revision, though the suite is green, and slices its restoration.',
+            withSkill: 1,
+            baseline: 0.86,
+          },
+        ],
+      },
+      {
+        name: 'nexus',
+        summary: 'Coordinates parallel sessions, one per pull request, and merges only on your go.',
+        description:
+          'The one session that sees across the others. It sets up the increment — commands, the base’s baseline, and a list of what the increment must deliver — then briefs one session per pull request, or per track of one, through the seven stages. It writes no product code. It judges each PR on its recorded evidence rather than on what a session says, answers questions from a register of the user’s decisions or batches them into one digest, guards shared resources such as migration numbers and labels, and merges only on the user’s explicit go, pinned to the commit it checked. Its state lives on disk, so it survives a lost context.',
+        inspiredBy: ['Effective harnesses for long-running agents — Anthropic'],
+        files: [
+          {
+            path: 'setup.md',
+            note: 'Setting up an increment: the slices, the notes folder, the commands and the baseline.',
+          },
+          {
+            path: 'contract.md',
+            note: 'The contract pasted into every session it starts, and the question format.',
+          },
+          {
+            path: 'gate.md',
+            note: 'The pull-request gate: every line checked against the record, or written as not verified.',
+          },
+          {
+            path: 'after-merge.md',
+            note: 'Merging pinned to a commit, renumbering, cleanup and the end of the increment.',
+          },
+          {
+            path: 'notes.md',
+            note: 'The shared notes folder: state, decisions, findings, leases, labels and one log per session.',
+          },
+          { path: 'tracks.md', note: 'Parallel tracks: a tree of sessions under one brief.' },
+          shared.devPipeline,
+          shared.ledgerFormat,
+          shared.briefPy,
+          shared.ledgerPy,
+        ],
+        evals: [
+          {
+            name: 'Judges the record',
+            checks:
+              'Over eight session logs, holds back a pull request whose go predates its head, settles a migration-number clash, and answers a question from the register — merging nothing.',
+            withSkill: 1,
+            baseline: 0.93,
+          },
+          {
+            name: 'Sets up the increment',
+            checks:
+              'Creates the whole notes folder, takes the commands from CI rather than the README, runs the baseline on the base, and starts no more sessions than allowed.',
+            withSkill: 1,
+            baseline: 0.77,
+          },
+          {
+            name: 'Merges on the go, then cleans up',
+            checks:
+              'Merges only the pull request the user approved, pinned to its head, then reruns the suite, updates what the increment has delivered and re-gates the next one.',
+            withSkill: 0.97,
+            baseline: 1,
           },
         ],
       },
@@ -333,8 +577,8 @@ export const families: Family[] = [
             name: 'Repair pins and drops root',
             checks:
               'States what it inferred about the stack, names the existing file’s defects before changing it, and removes a secret baked into the image.',
-            withSkill: 1,
-            baseline: 0.45,
+            withSkill: 0.94,
+            baseline: 0.62,
           },
         ],
       },
@@ -360,7 +604,7 @@ export const families: Family[] = [
             checks:
               'Composes the three services the code uses and leaves out the one a stale environment variable points at; health-gates startup and the migration step.',
             withSkill: 1,
-            baseline: 0.44,
+            baseline: 0.5,
           },
         ],
       },
@@ -391,7 +635,7 @@ export const families: Family[] = [
             checks:
               'Finds the privileged worker, the mounted Docker socket, a database published past the host firewall and a committed key — without echoing the key.',
             withSkill: 1,
-            baseline: 0.57,
+            baseline: 0.64,
           },
         ],
       },
@@ -419,8 +663,8 @@ export const families: Family[] = [
             name: 'Three symptoms, three causes',
             checks:
               'Traces an out-of-memory kill, a service addressed as localhost and a script with the wrong line endings — each with evidence and a fix proven by the probe that found it.',
-            withSkill: 1,
-            baseline: 0.58,
+            withSkill: 0.96,
+            baseline: 0.62,
           },
         ],
       },
@@ -514,6 +758,13 @@ export const families: Family[] = [
             withSkill: 1,
             baseline: 0,
           },
+          {
+            name: 'Held out: a scope parser',
+            checks:
+              'A twin of the Node eval on a repository the skill was never edited against: the fix lands in the shared parser, not the endpoint, and the inline copy elsewhere is found.',
+            withSkill: 1,
+            baseline: 0.44,
+          },
         ],
       },
       {
@@ -551,22 +802,22 @@ export const families: Family[] = [
             name: 'Web app: contain by flag',
             checks:
               'Ranks the feature flag ahead of a rollback, takes no production action without confirmation — the levers are stubs that record every call — and dates the impact from the logs, not the alert.',
-            withSkill: 1,
-            baseline: 0.43,
+            withSkill: 0.95,
+            baseline: 0.57,
           },
           {
             name: 'Batch job: repair as an artefact',
             checks:
               'Leaves production data untouched, counts the affected rows with a reproducible query, and writes a separate repair that defaults to a dry run and backs itself up.',
             withSkill: 1,
-            baseline: 0.6,
+            baseline: 0.5,
           },
           {
             name: 'Library with no deploy',
             checks:
               'Adapts containment to a library — withdraw the release, advise a pin — and gives consumers repair guidance instead of repairing their data.',
             withSkill: 1,
-            baseline: 0.71,
+            baseline: 0.86,
           },
         ],
       },
@@ -597,8 +848,8 @@ export const families: Family[] = [
             name: 'Widens the range and describes',
             checks:
               'Finds a triggering commit nine days before the outage, records contradicting sources instead of resolving them silently, and proposes no remediation.',
-            withSkill: 1,
-            baseline: 0.7,
+            withSkill: 0.97,
+            baseline: 0.5,
           },
         ],
       },
@@ -658,7 +909,7 @@ export const families: Family[] = [
             name: 'Reconciles before filing',
             checks:
               'With no tracker access, checks each finding against an export first: skips what is done, comments on the open duplicate, drafts only what is new and leaves a pending change set.',
-            withSkill: 1,
+            withSkill: 0.92,
             baseline: 0.71,
           },
         ],
@@ -690,8 +941,8 @@ export const families: Family[] = [
             name: 'Health, then order by policy',
             checks:
               'Finds the overdue, unowned incident follow-up that caps the score, then orders the work by a stated policy — as a proposed change set, changing nothing.',
-            withSkill: 1,
-            baseline: 0.69,
+            withSkill: 0.92,
+            baseline: 0.61,
           },
         ],
       },
@@ -730,7 +981,7 @@ export const families: Family[] = [
             checks:
               'Gives contested state a single system of record, demotes the cache to a derived store, replaces dual writes, and declines a new engine proposed without numbers.',
             withSkill: 1,
-            baseline: 0.67,
+            baseline: 0.73,
           },
         ],
       },
@@ -764,7 +1015,7 @@ export const families: Family[] = [
             checks:
               'Audits a schema dump: a trigger that silently handles one row of many rated Critical, missing keys, money stored as floating point — every finding with a line that exists, and nothing changed.',
             withSkill: 0.95,
-            baseline: 0.43,
+            baseline: 0.36,
           },
         ],
       },
@@ -789,7 +1040,7 @@ export const families: Family[] = [
             checks:
               'The DDL is executed and probed with rows that must be refused: an intersection table instead of a list column, price history by date, a birth date instead of an age.',
             withSkill: 0.97,
-            baseline: 0.46,
+            baseline: 0.54,
           },
         ],
       },
@@ -806,7 +1057,7 @@ export const families: Family[] = [
             checks:
               'Every diagram cell is parsed: a three-way association drawn as an intersection entity, role names at both ends of each relationship, a notation legend.',
             withSkill: 1,
-            baseline: 0.88,
+            baseline: 0.77,
           },
         ],
       },
@@ -831,7 +1082,7 @@ export const families: Family[] = [
             checks:
               'Resolves orphaned rows before declaring the foreign keys that would reject them, traces every decision to an audit finding and invents none.',
             withSkill: 0.97,
-            baseline: 0.54,
+            baseline: 0.39,
           },
         ],
       },
@@ -841,14 +1092,22 @@ export const families: Family[] = [
         description:
           'Writes ordered DDL files from an explicitly accepted proposal and its design. It stops on an unaccepted proposal, mismatched inputs or an open structural decision, and never applies what it writes.',
         inspiredBy: [],
-        files: [],
+        files: [
+          {
+            path: 'proposal.md',
+            note: 'The proposal it builds from: what acceptance looks like, and the decisions DDL may not invent.',
+          },
+          shared.dbTheory,
+          shared.erModeling,
+          shared.physicalDesign,
+        ],
         evals: [
           {
             name: 'Executable DDL from an accepted proposal',
             checks:
               'The files run in one pass on an empty database and refuse bad rows; an undecided constraint is flagged rather than invented.',
             withSkill: 1,
-            baseline: 0.78,
+            baseline: 0.89,
           },
         ],
       },
@@ -875,7 +1134,7 @@ export const families: Family[] = [
             checks:
               'Ranks statements by total time rather than by the slowest, finds the N+1 behind the top one and weighs each index against every query on the table.',
             withSkill: 1,
-            baseline: 0.93,
+            baseline: 0.86,
           },
         ],
       },
@@ -924,8 +1183,8 @@ export const families: Family[] = [
             name: 'Hub and spoke: recovers and scores',
             checks:
               'Recovers the topology, rates an internet-reachable remote-desktop rule Critical, finds overlapping address ranges and the single devices every critical path crosses — and never reproduces a secret.',
-            withSkill: 1,
-            baseline: 0.31,
+            withSkill: 0.97,
+            baseline: 0.23,
           },
         ],
       },
@@ -1017,7 +1276,7 @@ export const families: Family[] = [
             checks:
               'Given a proposal nobody has accepted, it stops, asks for the acceptance record and produces nothing.',
             withSkill: 1,
-            baseline: 0.75,
+            baseline: 0.67,
           },
         ],
       },
@@ -1068,21 +1327,21 @@ export const families: Family[] = [
             checks:
               'Finds committed credentials without echoing them, two environments sharing one state, and resources keyed in a way that risks replacement — changing nothing.',
             withSkill: 1,
-            baseline: 0.57,
+            baseline: 0.5,
           },
           {
             name: 'Design: isolates state',
             checks:
               'Splits state by lifecycle and ownership, isolates the regulated workload, and declines a one-bucket request with a reason.',
             withSkill: 1,
-            baseline: 0.71,
+            baseline: 0.65,
           },
           {
             name: 'Propose: nothing recreated',
             checks:
               'Rotates the leaked key before removing it, contains exposure before restructuring, and declares every address change with an expected plan of zero destroys.',
-            withSkill: 1,
-            baseline: 0.43,
+            withSkill: 0.93,
+            baseline: 0.64,
           },
         ],
       },
@@ -1115,22 +1374,22 @@ export const families: Family[] = [
             name: 'Review: untrusted code and rebuilds',
             checks:
               'Finds a trigger that runs fork code with secrets, a script injection, a rebuild per environment and a deploy with no test gate.',
-            withSkill: 1,
-            baseline: 0.67,
+            withSkill: 0.95,
+            baseline: 0.47,
           },
           {
             name: 'Design: build once, release progressively',
             checks:
               'Builds once and promotes the same artefact, releases by canary with automated rollback, and replaces an approval meeting with peer review.',
             withSkill: 1,
-            baseline: 0.65,
+            baseline: 0.59,
           },
           {
             name: 'Propose: keeps production up',
             checks:
               'Runs the new pipeline alongside the old before cutting over, and names the settings a git revert would not undo.',
-            withSkill: 0.93,
-            baseline: 0.7,
+            withSkill: 0.97,
+            baseline: 0.6,
           },
         ],
       },
@@ -1170,7 +1429,7 @@ export const families: Family[] = [
             name: 'Review: abuse and fallback',
             checks:
               'Finds a single approver for irreversible payouts, a permission that can grant itself and a fraud check that fails open.',
-            withSkill: 1,
+            withSkill: 0.97,
             baseline: 0.5,
           },
           {
@@ -1178,13 +1437,13 @@ export const families: Family[] = [
             checks:
               'Models insiders and abusers as well as outsiders, and declines shortcuts such as treating a hashed identifier as privacy.',
             withSkill: 1,
-            baseline: 0.77,
+            baseline: 0.65,
           },
           {
             name: 'Propose: contain, then design out',
             checks:
               'Contains the live risks before any redesign, and gives every acceptance an owner and an expiry.',
-            withSkill: 1,
+            withSkill: 0.95,
             baseline: 0.54,
           },
         ],
@@ -1219,22 +1478,22 @@ export const families: Family[] = [
             name: 'Review: inventory and secrets',
             checks:
               'Reconciles the endpoints against the API specification and so finds an unauthenticated legacy version, alongside injection, broken object access and weak password hashing.',
-            withSkill: 0.98,
+            withSkill: 1,
             baseline: 0.61,
           },
           {
             name: 'Design: reshapes the quick wins',
             checks:
               'Declines the convenient options — tokens in browser storage, wildcard origins, tenant checks in the frontend — for controls enforced on the server.',
-            withSkill: 1,
+            withSkill: 0.99,
             baseline: 0.71,
           },
           {
             name: 'Propose: contain, then fix the class',
             checks:
               'Rotates the key and contains the open holes first, then fixes each class of defect once, starting from a failing test.',
-            withSkill: 1,
-            baseline: 0.57,
+            withSkill: 0.93,
+            baseline: 0.64,
           },
         ],
       },
@@ -1281,14 +1540,14 @@ export const families: Family[] = [
             checks:
               'Holds sandboxes to a different level than production, maps each control per platform and declines obscurity presented as a control.',
             withSkill: 1,
-            baseline: 0.6,
+            baseline: 0.73,
           },
           {
             name: 'Propose: no lockout',
             checks:
               'Brings a tested private admin path up before removing the public one, and gives every access-reducing step a lockout guard.',
-            withSkill: 1,
-            baseline: 0.69,
+            withSkill: 0.97,
+            baseline: 0.61,
           },
         ],
       },
@@ -1329,7 +1588,7 @@ export const families: Family[] = [
             name: 'Splits and discloses',
             checks:
               'On a branch mixing a refactor with a feature, compares its size to the limit and proposes a split — refactor first — without rewriting any history.',
-            withSkill: 0.97,
+            withSkill: 0.95,
             baseline: 0.31,
           },
         ],
@@ -1358,7 +1617,7 @@ export const families: Family[] = [
             name: 'Hotspots, not cold giants',
             checks:
               'Cleans the history first — a mass commit and a generated file dropped — then ranks by change frequency and narrows the top file to one function.',
-            withSkill: 1,
+            withSkill: 0.98,
             baseline: 0.4,
           },
         ],
@@ -1420,7 +1679,7 @@ export const families: Family[] = [
             name: 'Would it fail?',
             checks:
               'Maps five acceptance criteria to their tests, shows a boundary mutation that survives, and names the criterion with no test at all.',
-            withSkill: 1,
+            withSkill: 0.96,
             baseline: 0.2,
           },
         ],
@@ -1442,8 +1701,8 @@ export const families: Family[] = [
             name: 'Interleavings and replicas',
             checks:
               'Reads the replica count from the deployment files outside the diff, and writes each race — such as a double redemption — as numbered steps.',
-            withSkill: 1,
-            baseline: 0.39,
+            withSkill: 0.95,
+            baseline: 0.54,
           },
         ],
       },
@@ -1471,8 +1730,8 @@ export const families: Family[] = [
             name: 'Areas, not people',
             checks:
               'Declines a request to rank reviewers and offers the view by code area instead; every metric carries its numerator, denominator and sample floor.',
-            withSkill: 1,
-            baseline: 0.36,
+            withSkill: 0.98,
+            baseline: 0.43,
           },
         ],
       },
@@ -1519,7 +1778,7 @@ export const families: Family[] = [
             name: 'Dream: true and small',
             checks:
               'Corrects notes the code has overtaken, keeps an old note that still holds, merges a duplicate, strips a secret, and reports a planted instruction as data instead of obeying it.',
-            withSkill: 1,
+            withSkill: 0.9,
             baseline: 0.77,
           },
         ],
@@ -1539,6 +1798,19 @@ export type Harness = {
 }
 
 export const harnesses: Harness[] = [
+  {
+    name: 'pipeline.py',
+    title: 'The whole pipeline',
+    runs: 'Every development stage after the design: agent-brief, acceptance-tests and tdd, then the closing loop.',
+    how: [
+      'The design stays a conversation. The harness starts from a design file marked resolved and refuses one that is not.',
+      'Before anything runs: no brief or ledger left from other work, a clean tree, a green suite, and a working branch.',
+      'The brief stage may change nothing outside the working folder. The acceptance tests must be red, and no line of their output a load or import error.',
+      'It never approves a brief. A run built on a draft says so in the report, the log and the verdict, unless the user approved at launch.',
+      'On a go, the design is marked built and the change’s working files move to their own archive folder, so parallel branches never meet in the same file. State is on disk; a stopped run resumes.',
+    ],
+    returns: 'A go or an escalation, the commits, and a report of what was assumed and what is still open.',
+  },
   {
     name: 'loop.py',
     title: 'The closing loop',
@@ -1652,6 +1924,10 @@ export const harnesses: Harness[] = [
 /** Building blocks the harnesses share; each also works on its own. */
 export const harnessTools: { name: string; note: string }[] = [
   {
+    name: 'brief.py',
+    note: 'The brief’s shape as code: title, status, required sections and the criterion-to-test mapping, each problem with a stable code. The development skills ship the same script.',
+  },
+  {
     name: 'ledger.py',
     note: 'The ledger’s grammar as code: parser, checker and verdict arithmetic. It can check a ledger the skills wrote by hand.',
   },
@@ -1689,10 +1965,10 @@ export const evalMethod: { title: string; body: string }[] = [
 ]
 
 export const evalCaveats: string[] = [
-  'dbquery scores 1.00 against 0.93: an agent with no skill already ranks by total time and finds the N+1. The skill adds the score and a complete review every time.',
-  'dbdiagram scores 1.00 against 0.88: the design it is handed is already written in the target notation, so an agent with no skill draws most of it.',
-  'netblueprint scores 1.00 against 0.75: its eval checks that it refuses an unaccepted proposal, which an agent with no skill mostly does too.',
-  'pipelines in Propose mode is the lowest with-skill score, 0.93: two of three runs ordered a release-safety step ahead of build-once.',
+  'nexus, merging on the go, scores 0.97 against 1.00: an agent with no skill already merged the one approved pull request and cleaned up. Its other two evals show the gain.',
+  'dbbuild scores 1.00 against 0.89 and dbquery 1.00 against 0.86: an agent with no skill already writes runnable DDL and ranks queries by total time. The skills add the negative tests and a complete, scored review.',
+  'architect-deep-dive, answering from a decision record, is the lowest with-skill score, 0.88: one of three runs asked a question the record already answered.',
+  'Most evals score 0.95 or more with the skill, so they now guard against regressions more than they show gains.',
   'Every baseline is a single run, so a lone miss is a signal to read the run, not a verdict on the skill.',
 ]
 
